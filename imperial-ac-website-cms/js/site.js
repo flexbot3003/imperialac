@@ -230,6 +230,138 @@ async function renderGallery() {
 }
 
 
+
+async function renderFixtures() {
+  const loading = document.getElementById("fixtureLoading");
+  const upcomingSection = document.querySelector("[data-fixture-upcoming-section]");
+  const resultsSection = document.querySelector("[data-fixture-results-section]");
+  const upcomingMount = document.getElementById("upcomingFixtureList");
+  const resultsMount = document.getElementById("resultFixtureList");
+
+  if (!upcomingMount || !resultsMount) return;
+
+  const client = getCmsClient();
+
+  if (!client) {
+    if (loading) loading.innerHTML = emptyState(
+      "Fixtures awaiting confirmation",
+      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+    );
+    return;
+  }
+
+  const { data, error } = await client
+    .from("fixtures")
+    .select("*")
+    .eq("published", true)
+    .order("match_date", { ascending: true });
+
+  if (error || !data?.length) {
+    if (loading) loading.innerHTML = emptyState(
+      "Fixtures awaiting confirmation",
+      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+    );
+    return;
+  }
+
+  if (loading) loading.hidden = true;
+
+  const upcoming = data
+    .filter(item => item.status !== "result")
+    .sort(compareFixtureDatesAscending);
+
+  const results = data
+    .filter(item => item.status === "result")
+    .sort(compareFixtureDatesDescending);
+
+  if (upcoming.length) {
+    upcomingSection?.removeAttribute("hidden");
+    upcomingMount.innerHTML = upcoming.map(renderFixtureRow).join("");
+  } else {
+    upcomingSection?.setAttribute("hidden", "");
+  }
+
+  if (results.length) {
+    resultsSection?.removeAttribute("hidden");
+    resultsMount.innerHTML = results.map(renderFixtureRow).join("");
+  } else {
+    resultsSection?.setAttribute("hidden", "");
+  }
+
+  if (!upcoming.length && !results.length && loading) {
+    loading.hidden = false;
+    loading.innerHTML = emptyState(
+      "Fixtures awaiting confirmation",
+      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+    );
+  }
+
+  observeReveal();
+}
+
+function renderFixtureRow(item) {
+  const status = item.status || "upcoming";
+  const score = status === "result"
+    ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}`
+    : status === "postponed"
+      ? "PPD"
+      : status === "cancelled"
+        ? "CAN"
+        : "VS";
+
+  const details = [
+    escapeHtml(item.competition || "MPL"),
+    escapeHtml(formatMatchTime(item.kickoff_time))
+  ].filter(Boolean).join(" • ");
+
+  const location = [item.venue, item.notes]
+    .filter(Boolean)
+    .map(escapeHtml)
+    .join(" • ") || "Venue TBC";
+
+  return `
+    <article class="fixture-row reveal">
+      <div class="fixture-date">
+        <strong>${escapeHtml(formatMatchDate(item.match_date))}</strong>
+        <span>${details}</span>
+      </div>
+      <div class="fixture-match">
+        <strong class="home">${escapeHtml(item.home_team)}</strong>
+        <div class="fixture-score">${score}</div>
+        <strong>${escapeHtml(item.away_team)}</strong>
+      </div>
+      <div class="fixture-venue">${location}</div>
+    </article>
+  `;
+}
+
+function fixtureDateValue(item) {
+  if (!item.match_date) return Number.MAX_SAFE_INTEGER;
+  return new Date(`${item.match_date}T${String(item.kickoff_time || "12:00:00").slice(0, 8)}`).getTime();
+}
+
+function compareFixtureDatesAscending(a, b) {
+  return fixtureDateValue(a) - fixtureDateValue(b);
+}
+
+function compareFixtureDatesDescending(a, b) {
+  return fixtureDateValue(b) - fixtureDateValue(a);
+}
+
+function formatMatchDate(value) {
+  if (!value) return "Date TBC";
+  return new Intl.DateTimeFormat("en-ZA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatMatchTime(value) {
+  if (!value) return "Time TBC";
+  return String(value).slice(0, 5);
+}
+
 async function renderArticle() {
   const mount = document.getElementById("newsArticle");
   if (!mount) return;
@@ -309,6 +441,7 @@ async function initialiseSite() {
   renderFooter();
   await Promise.all([
     renderStandings(),
+    renderFixtures(),
     renderNews("homeNews", 3),
     renderNews("allNews"),
     renderGallery(),
