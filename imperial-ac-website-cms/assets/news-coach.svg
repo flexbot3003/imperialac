@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760">
+<defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#0F3E9E"/><stop offset="1" stop-color="#2E74FF"/></linearGradient></defs>
+<rect width="1200" height="760" fill="#F4F7FC"/><rect x="55" y="55" width="1090" height="650" rx="36" fill="url(#g)"/>
+<circle cx="930" cy="270" r="150" fill="#fff" opacity=".1"/><circle cx="935" cy="280" r="72" fill="#7B5138"/>
+<path d="M815 608c9-180 230-180 242 0" fill="#111827"/><path d="M873 414h126v56H873z" fill="#fff"/>
+<text x="110" y="210" fill="#fff" font-family="Arial" font-size="42" font-weight="700">NEW HEAD COACH</text>
+<text x="110" y="315" fill="#fff" font-family="Arial" font-size="78" font-weight="900">TEBOGO</text>
+<text x="110" y="400" fill="#D4AF37" font-family="Arial" font-size="78" font-weight="900">SELESHO</text>
+<text x="110" y="585" fill="#fff" font-family="Arial" font-size="30">IMPERIAL AC • SEASON 3</text>
+</svg>
