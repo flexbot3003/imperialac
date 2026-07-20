@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js"></script></head><body class="admin-body">
+<header class="admin-topbar"><a class="brand" href="index.html"><img alt="Imperial AC crest" src="assets/logo-mark.svg"/><span><strong>Imperial AC</strong><small>Club Dashboard</small></span></a><div class="admin-topbar-actions"><a href="index.html">View website</a><button class="button button--line" id="logoutButton" type="button">Sign out</button></div></header>
+<main>
+<section class="setup-card" id="configRequired"><p class="eyebrow">Setup required</p><h1>Connect the live content database.</h1><p>Open CMS-SETUP.md, create the Supabase project, run the included SQL, and paste the project URL and publishable key into js/cms-config.js.</p><code>js/cms-config.js</code></section>
+<div hidden="" id="authArea"><section class="login-card" id="loginPanel"><p class="eyebrow">Private access</p><h1>Club dashboard login</h1><p>Use the administrator account created in Supabase Authentication.</p><form id="loginForm"><div class="field"><label for="loginEmail">Email</label><input autocomplete="email" id="loginEmail" name="email" required="" type="email"/></div><div class="field"><label for="loginPassword">Password</label><input autocomplete="current-password" id="loginPassword" name="password" required="" type="password"/></div><button class="button button--blue" type="submit">Sign in</button></form></section>
+<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
+<section class="admin-panel" data-admin-panel="overview"><div class="admin-section-head"><div><h2>Overview</h2><p>A quick view of the content currently in the CMS.</p></div></div><div class="admin-stat-grid"><div class="admin-stat"><span>Teams in standings</span><strong id="countStandings">0</strong></div><div class="admin-stat"><span>Fixtures and results</span><strong id="countFixtures">0</strong></div><div class="admin-stat"><span>News posts</span><strong id="countNews">0</strong></div><div class="admin-stat"><span>News groups</span><strong id="countNewsGroups">0</strong></div><div class="admin-stat"><span>Gallery items</span><strong id="countGallery">0</strong></div></div></section>
+<section class="admin-panel" data-admin-panel="standings" hidden=""><div class="admin-section-head"><div><h2>Standings editor</h2><p>Points and goal difference calculate automatically.</p></div><button class="button button--line" id="addStandingRow" type="button">Add team</button></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th></th></tr></thead><tbody id="standingEditorBody"></tbody></table></div><div class="admin-actions"><button class="primary" id="saveStandings" type="button">Save standings live</button></div></div></section>
+<section class="admin-panel" data-admin-panel="fixtures" hidden=""><form class="admin-card" id="fixtureForm"><input name="id" type="hidden"/><div class="admin-card-header"><h2>Create or edit fixture</h2><p>Use Result only after the final score is confirmed.</p></div><div class="admin-form-grid"><div class="field"><label>Competition</label><input name="competition" required="" value="MPL"/></div><div class="field"><label>Status</label><select name="status"><option value="upcoming">Upcoming</option><option value="result">Result</option><option value="postponed">Postponed</option><option value="cancelled">Cancelled</option></select></div><div class="field"><label>Match date</label><input name="match_date" type="date"/></div><div class="field"><label>Kick-off time</label><input name="kickoff_time" type="time"/></div><div class="field"><label>Home team</label><input name="home_team" required=""/></div><div class="field"><label>Away team</label><input name="away_team" required=""/></div><div class="field"><label>Home score</label><input min="0" name="home_score" type="number"/></div><div class="field"><label>Away score</label><input min="0" name="away_score" type="number"/></div><div class="field field--wide"><label>Venue</label><input name="venue"/></div><div class="field field--wide"><label>Notes</label><textarea name="notes"></textarea></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish on the website</label></div><div class="admin-actions"><button class="primary" type="submit">Save fixture</button><button id="resetFixtureForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Existing fixtures</h2></div><div class="admin-list" id="fixtureAdminList"></div></section>
+<section class="admin-panel" data-admin-panel="news" hidden="">
+<div class="admin-section-head">
+<div>
+<h2>News publishing</h2>
+<p>Create reusable groups such as Signings, Birthdays, Match Reports and Player Profiles, then assign stories to them.</p>
+</div>
+</div>
+<div class="admin-news-group-grid">
+<form class="admin-card" id="newsGroupForm">
+<input id="newsGroupId" name="id" type="hidden"/>
+<div class="admin-card-header">
+<h2>Create or edit group</h2>
+<p>Groups become public filters on the News page. A hidden group and its assigned stories will not appear publicly.</p>
+</div>
+<div class="admin-form-grid">
+<div class="field">
+<label for="newsGroupName">Group name</label>
+<input id="newsGroupName" name="name" placeholder="Signings" required=""/>
+</div>
+<div class="field">
+<label for="newsGroupSlug">URL slug</label>
+<input id="newsGroupSlug" name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="signings" required=""/>
+<small class="field-help">Used in links such as news.html?group=signings</small>
+</div>
+<div class="field field--wide">
+<label for="newsGroupDescription">Short description</label>
+<textarea id="newsGroupDescription" name="description" placeholder="New players joining the Imperial AC journey."></textarea>
+</div>
+<div class="field">
+<label for="newsGroupOrder">Display order</label>
+<input id="newsGroupOrder" name="display_order" type="number" value="0"/>
+</div>
+<label class="checkbox-row">
+<input checked="" name="published" type="checkbox"/>
+        Show this group publicly
+      </label>
+</div>
+<div class="admin-actions">
+<button class="primary" type="submit">Save group</button>
+<button id="resetNewsGroupForm" type="button">Clear form</button>
+</div>
+</form>
+<div class="admin-card">
+<div class="admin-card-header">
+<h2>Existing groups</h2>
+<p>Rename, reorder, hide or remove any group. Stories remain editable if a group is removed.</p>
+</div>
+<div class="admin-list" id="newsGroupAdminList"></div>
+</div>
+</div>
+<form class="admin-card" id="newsForm">
+<input id="newsId" name="id" type="hidden"/>
+<div class="admin-card-header">
+<h2>Create or edit news</h2>
+<p>Choose a group so visitors can find related stories together.</p>
+</div>
+<div class="admin-form-grid">
+<div class="field field--wide">
+<label>Headline</label>
+<input name="title" required=""/>
+</div>
+<div class="field">
+<label>News group</label>
+<select id="newsGroupSelect" name="group_id">
+<option value="">Uncategorised / Club News</option>
+</select>
+</div>
+<div class="field">
+<label>Upload image</label>
+<input accept="image/*" name="image_file" type="file"/>
+</div>
+<div class="field field--wide">
+<label>Short summary</label>
+<textarea name="excerpt"></textarea>
+</div>
+<div class="field field--wide">
+<label>Full story</label>
+<textarea name="body" style="min-height:260px"></textarea>
+</div>
+<div class="field field--wide">
+<label>Or image URL</label>
+<input name="image_url" type="url"/>
+</div>
+<label class="checkbox-row field--wide">
+<input name="published" type="checkbox"/>
+      Publish now
+    </label>
+</div>
+<div class="admin-actions">
+<button class="primary" type="submit">Save news</button>
+<button id="resetNewsForm" type="button">Clear form</button>
+</div>
+</form>
+<div class="admin-section-head admin-section-head--filter">
+<div>
+<h2>Existing news</h2>
+<p>Filter the dashboard list by group while editing content.</p>
+</div>
+<label class="admin-filter-control">
+<span>Group</span>
+<select id="adminNewsGroupFilter">
+<option value="">All groups</option>
+</select>
+</label>
+</div>
+<div class="admin-list" id="newsAdminList"></div>
+</section>
+<section class="admin-panel" data-admin-panel="gallery" hidden=""><form class="admin-card" id="galleryForm"><input id="galleryId" name="id" type="hidden"/><div class="admin-card-header"><h2>Add or edit gallery image</h2></div><div class="admin-form-grid"><div class="field"><label>Title</label><input name="title"/></div><div class="field"><label>Category</label><input name="category" value="Club"/></div><div class="field"><label>Upload image</label><input accept="image/*" name="image_file" type="file"/></div><div class="field"><label>Display order</label><input name="display_order" type="number" value="0"/></div><div class="field field--wide"><label>Or image URL</label><input name="image_url" type="url"/></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish now</label></div><div class="admin-actions"><button class="primary" type="submit">Save image</button><button id="resetGalleryForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Gallery items</h2></div><div class="admin-list" id="galleryAdminList"></div></section>
+<section class="admin-panel" data-admin-panel="visibility" hidden=""><form class="admin-card" id="settingsForm"><div class="admin-card-header"><h2>Public page visibility</h2><p>Fixtures remain visible and show an awaiting-confirmation message when empty. News and Gallery stay hidden until you turn them on.</p></div><div class="visibility-grid"><label class="visibility-option"><span><strong>Standings</strong><span>Show the live MPL table in navigation.</span></span><span class="switch"><input id="showStandings" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>News</strong><span>Show the News page in navigation and on the homepage.</span></span><span class="switch"><input id="showNews" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Gallery</strong><span>Show the Gallery page in navigation.</span></span><span class="switch"><input id="showGallery" type="checkbox"/><i></i></span></label></div><div class="admin-actions"><button class="primary" type="submit">Save visibility</button></div></form></section>
+<section class="admin-panel" data-admin-panel="compliance" hidden="">
+<div class="admin-section-head">
+<div>
+<h2>Legal and compliance</h2>
+<p>Review public notices before launch and whenever club processes or service providers change.</p>
+</div>
+</div>
+<div class="admin-card">
+<div class="admin-card-header">
+<h2>Published policy pages</h2>
+<p>These pages are included in the website footer and use the same white editorial design.</p>
+</div>
+<div class="compliance-links">
+<a class="compliance-link" href="privacy.html" target="_blank"><span><strong>Privacy Policy</strong><span>Personal-information handling and POPIA rights.</span></span><span>↗</span></a>
+<a class="compliance-link" href="terms.html" target="_blank"><span><strong>Terms of Use</strong><span>Acceptable use, intellectual property and liability.</span></span><span>↗</span></a>
+<a class="compliance-link" href="cookies.html" target="_blank"><span><strong>Cookie Policy</strong><span>Browser storage, admin authentication and choices.</span></span><span>↗</span></a>
+<a class="compliance-link" href="disclaimer.html" target="_blank"><span><strong>Disclaimer</strong><span>Fixtures, results, standings and news may change.</span></span><span>↗</span></a>
+<a class="compliance-link" href="media-notice.html" target="_blank"><span><strong>Media &amp; Photography</strong><span>Matchday, training and event media use.</span></span><span>↗</span></a>
+<a class="compliance-link" href="accessibility.html" target="_blank"><span><strong>Accessibility</strong><span>Accessibility target, measures and feedback route.</span></span><span>↗</span></a>
+<a class="compliance-link" href="data-rights.html" target="_blank"><span><strong>Contact &amp; Data Rights</strong><span>Access, correction, deletion and complaints.</span></span><span>↗</span></a>
+</div>
+</div>
+<div class="admin-card">
+<div class="admin-card-header"><h2>Launch checklist</h2><p>Complete these checks before publishing the final policies.</p></div>
+<ul class="compliance-checklist">
+<li>Confirm the club’s Information Officer and official privacy contact details.</li>
+<li>Verify the final list of hosting, database, font, analytics and media providers.</li>
+<li>Remove references to services that are not used and add any that are missing.</li>
+<li>Set up a secure process for access, correction and deletion requests.</li>
+<li>Use clear photography notices at events and obtain appropriate permission for identifiable minors.</li>
+<li>Review the policies after major website, club or legal changes.</li>
+<li>Have the documents reviewed by a South African legal or POPIA professional before launch.</li>
+</ul>
+</div>
+</section>
+</div></section></div></main><div aria-live="polite" class="admin-notice" id="adminNotice" role="status"></div></body></html>
