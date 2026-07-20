@@ -11,12 +11,24 @@ const defaultSettings = {
   show_standings: true
 };
 
-const fallbackStandings = [
-  { id: "imperial", position: 1, team_name: "Imperial AC", played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, goal_difference: 0, points: 0 }
-];
+const fallbackStandings = [{
+  id: "imperial",
+  position: 1,
+  team_name: "Imperial AC",
+  played: 0,
+  won: 0,
+  drawn: 0,
+  lost: 0,
+  goals_for: 0,
+  goals_against: 0,
+  goal_difference: 0,
+  points: 0
+}];
 
 let cmsClient = null;
 let siteSettings = { ...defaultSettings };
+let publicNewsGroups = [];
+let publicNewsGroupsLoaded = false;
 
 function cmsConfigured() {
   const config = window.IMPERIAL_CMS || {};
@@ -37,13 +49,17 @@ function getCmsClient() {
 async function loadSiteSettings() {
   const client = getCmsClient();
   if (!client) return siteSettings;
+
   const { data, error } = await client.from("site_settings").select("key,value");
   if (error) {
     console.warn("Could not load site settings:", error.message);
     return siteSettings;
   }
-  data.forEach(row => {
-    if (row.key in siteSettings) siteSettings[row.key] = row.value === true || row.value === "true";
+
+  (data || []).forEach(row => {
+    if (row.key in siteSettings) {
+      siteSettings[row.key] = row.value === true || row.value === "true";
+    }
   });
   return siteSettings;
 }
@@ -66,28 +82,27 @@ function renderHeader() {
   if (!mount) return;
   const current = document.body.dataset.page || "home";
   const links = navItems().map(([label, href, key]) =>
-    `<a class="nav-link ${current === key ? "active" : ""}" href="${href}">${label}</a>`
+    `<a href="${href}" class="${key === current ? "active" : ""}">${label}</a>`
   ).join("");
 
   mount.innerHTML = `
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
-      <div class="container nav-wrap">
+      <div class="container nav-shell">
         <a class="brand" href="index.html" aria-label="Imperial AC home">
-          <img src="assets/logo-mark.svg" alt="">
-          <span class="brand-name">IMPERIAL AC<small>DYNASTY REFINED</small></span>
+          <img src="assets/logo-mark.svg" alt="Imperial AC crest">
+          <span><strong>Imperial AC</strong><small>Dynasty Refined</small></span>
         </a>
-        <nav class="desktop-nav" aria-label="Primary navigation">${links}</nav>
-        <div class="header-actions">
-          <a class="button small" href="join.html">Contact the club</a>
-          <button class="menu-button" aria-label="Open navigation" aria-expanded="false">☰</button>
-        </div>
+        <nav class="desktop-nav" aria-label="Main navigation">${links}</nav>
+        <a class="button button--blue header-cta" href="join.html">Contact the club</a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileMenu" aria-label="Open menu">
+          <span></span><span></span>
+        </button>
       </div>
-    </header>
-    <div class="mobile-menu" aria-label="Mobile navigation">
-      ${navItems().map(([label, href]) => `<a href="${href}">${label}</a>`).join("")}
-      <a href="join.html">Contact the club</a>
-    </div>`;
+      <nav class="mobile-menu" id="mobileMenu" aria-label="Mobile navigation">
+        <div class="container">${links}<a href="join.html">Contact the club</a></div>
+      </nav>
+    </header>`;
 
   const button = mount.querySelector(".menu-button");
   const menu = mount.querySelector(".mobile-menu");
@@ -95,58 +110,82 @@ function renderHeader() {
     const open = menu.classList.toggle("open");
     document.body.classList.toggle("menu-open", open);
     button.setAttribute("aria-expanded", String(open));
-    button.textContent = open ? "✕" : "☰";
   });
 }
 
 function renderFooter() {
   const mount = document.querySelector("[data-site-footer]");
   if (!mount) return;
-  const dynamicLinks = [];
-  if (siteSettings.show_standings) dynamicLinks.push('<a href="standings.html">Standings</a>');
-  if (siteSettings.show_news) dynamicLinks.push('<a href="news.html">News</a>');
-  if (siteSettings.show_gallery) dynamicLinks.push('<a href="gallery.html">Gallery</a>');
+  const dynamic = [];
+  if (siteSettings.show_standings) dynamic.push('<a href="standings.html">Standings</a>');
+  if (siteSettings.show_news) dynamic.push('<a href="news.html">News</a>');
+  if (siteSettings.show_gallery) dynamic.push('<a href="gallery.html">Gallery</a>');
+
   mount.innerHTML = `
     <footer class="site-footer">
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-brand">
-            <a class="brand" href="index.html">
-              <img src="assets/logo-mark.svg" alt="">
-              <span class="brand-name">IMPERIAL AC<small>DYNASTY REFINED</small></span>
-            </a>
-            <p>Imperial Athletic Club's senior MPL side, based in Pretoria.</p>
-          </div>
-          <div class="footer-col">
-            <h4>Club</h4>
-            <a href="club.html">Our story</a>
-            <a href="fixtures.html">Fixtures</a>
-            ${dynamicLinks.join("")}
-          </div>
-          <div class="footer-col">
-            <h4>Social</h4>
-            <a href="${socialLinks.facebook}" target="_blank" rel="noopener">Facebook</a>
-            <a href="${socialLinks.instagram}" target="_blank" rel="noopener">Instagram</a>
-            <a href="${socialLinks.whatsapp}" target="_blank" rel="noopener">WhatsApp Channel</a>
-          </div>
-          <div class="footer-col">
-            <h4>Contact</h4>
-            <a href="mailto:${socialLinks.email}">${socialLinks.email}</a>
-            <a href="join.html">Contact the club</a>
-            <a href="partners.html">Partnership enquiries</a>
-          </div>
+      <div class="container footer-grid footer-grid--legal">
+        <div class="footer-brand">
+          <a class="brand brand--footer" href="index.html">
+            <img src="assets/logo-mark.svg" alt="Imperial AC crest">
+            <span><strong>Imperial AC</strong><small>Dynasty Refined</small></span>
+          </a>
+          <p>Imperial Athletic Club's senior MPL side, based in Pretoria.</p>
         </div>
-        <div class="footer-bottom">
-          <div>© <span data-year></span> Imperial Athletic Club. All rights reserved.</div>
-          <span>Pretoria, South Africa</span>
-        </div>
+        <div><h2>Club</h2><a href="club.html">Our story</a><a href="fixtures.html">Fixtures</a>${dynamic.join("")}</div>
+        <div><h2>Social</h2><a href="${socialLinks.facebook}" target="_blank" rel="noopener">Facebook</a><a href="${socialLinks.instagram}" target="_blank" rel="noopener">Instagram</a><a href="${socialLinks.whatsapp}" target="_blank" rel="noopener">WhatsApp Channel</a></div>
+        <div><h2>Contact</h2><a href="mailto:${socialLinks.email}">${socialLinks.email}</a><a href="join.html">Contact the club</a><a href="partners.html">Partnership enquiries</a><a href="data-rights.html">Data rights request</a></div>
+        <div><h2>Legal</h2><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a><a href="cookies.html">Cookie Policy</a><a href="disclaimer.html">Disclaimer</a><a href="media-notice.html">Media & Photography</a><a href="accessibility.html">Accessibility</a></div>
+      </div>
+      <div class="container footer-bottom">
+        <span>© <span data-year></span> Imperial Athletic Club. All rights reserved.</span>
+        <span class="footer-bottom-links"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="cookies.html">Cookies</a><a href="join.html">Contact</a></span>
       </div>
     </footer>`;
   document.querySelectorAll("[data-year]").forEach(el => el.textContent = new Date().getFullYear());
 }
 
+function renderCookieNotice(force = false) {
+  const storageKey = "imperial_cookie_notice";
+  const existing = document.querySelector(".cookie-notice");
+  if (existing) existing.remove();
+
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(storageKey) === "dismissed"; } catch (_error) {}
+  if (dismissed && !force) return;
+
+  const notice = document.createElement("aside");
+  notice.className = "cookie-notice";
+  notice.setAttribute("role", "dialog");
+  notice.setAttribute("aria-label", "Cookie and storage notice");
+  notice.innerHTML = `
+    <div>
+      <strong>Website storage</strong>
+      <p>This site uses essential browser storage for preferences and secure administrator access. Advertising cookies are not enabled in this build.</p>
+    </div>
+    <div class="cookie-notice-actions">
+      <a class="button button--line" href="cookies.html">Cookie policy</a>
+      <button class="button button--blue" type="button" data-dismiss-cookie-notice>Continue</button>
+    </div>`;
+  document.body.appendChild(notice);
+
+  notice.querySelector("[data-dismiss-cookie-notice]")?.addEventListener("click", () => {
+    try { localStorage.setItem(storageKey, "dismissed"); } catch (_error) {}
+    notice.remove();
+  });
+}
+
+function setupCookieControls() {
+  document.querySelectorAll("[data-reset-cookie-notice]").forEach(button => {
+    button.addEventListener("click", () => {
+      try { localStorage.removeItem("imperial_cookie_notice"); } catch (_error) {}
+      renderCookieNotice(true);
+      document.querySelector(".cookie-notice")?.focus();
+    });
+  });
+}
+
 function emptyState(title, copy) {
-  return `<div class="empty-state reveal"><div class="icon-box">IAC</div><h3>${title}</h3><p>${copy}</p></div>`;
+  return `<div class="empty-state"><span class="empty-mark">IAC</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(copy)}</p></div>`;
 }
 
 async function renderStandings() {
@@ -159,48 +198,376 @@ async function renderStandings() {
     if (!error && data?.length) rows = data;
   }
   mount.innerHTML = rows.map(row => `
-    <tr class="${row.team_name.toLowerCase().includes("imperial") ? "highlight" : ""}">
-      <td>${row.position}</td><td>${escapeHtml(row.team_name)}</td><td>${row.played}</td><td>${row.won}</td>
-      <td>${row.drawn}</td><td>${row.lost}</td><td>${row.goals_for}</td><td>${row.goals_against}</td>
-      <td>${row.goal_difference}</td><td>${row.points}</td>
+    <tr class="${String(row.team_name).toLowerCase().includes("imperial") ? "is-imperial" : ""}">
+      <td>${row.position}</td><td class="club-cell"><span class="table-crest">${initials(row.team_name)}</span>${escapeHtml(row.team_name)}</td>
+      <td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td>
+      <td>${row.goals_for}</td><td>${row.goals_against}</td><td>${row.goal_difference}</td><td><strong>${row.points}</strong></td>
     </tr>`).join("");
+}
+
+function slugifyNewsGroup(value = "") {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function loadPublicNewsGroups(force = false) {
+  if (publicNewsGroupsLoaded && !force) {
+    return publicNewsGroups;
+  }
+
+  const client = getCmsClient();
+
+  if (!client) {
+    return [];
+  }
+
+  const { data, error } = await client
+    .from("news_groups")
+    .select("*")
+    .eq("published", true)
+    .order("display_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Could not load news groups:", error);
+    publicNewsGroupsLoaded = false;
+    return [];
+  }
+
+  publicNewsGroups = data || [];
+  publicNewsGroupsLoaded = true;
+
+  return publicNewsGroups;
+}
+
+function groupForNewsPost(item, groups = publicNewsGroups) {
+  if (item.group_id) {
+    const groupById = groups.find(
+      group => group.id === item.group_id
+    );
+
+    if (groupById) {
+      return groupById;
+    }
+  }
+
+  const category = item.category || "Club News";
+
+  const groupByName = groups.find(
+    group =>
+      String(group.name).toLowerCase() ===
+      String(category).toLowerCase()
+  );
+
+  if (groupByName) {
+    return groupByName;
+  }
+
+  return {
+    id: item.group_id || null,
+    name: category,
+    slug: slugifyNewsGroup(category) || "club-news",
+    description: "",
+    display_order: 999,
+    published: true
+  };
+}
+
+function newsCardMarkup(item, index = 0, targetId = "allNews") {
+  const group = groupForNewsPost(item);
+
+  return `
+    <article
+      class="news-card ${
+        index === 0 && targetId === "homeNews"
+          ? "news-card--feature"
+          : ""
+      } reveal"
+      data-news-group="${escapeAttribute(group.slug)}"
+    >
+      <a
+        class="news-media ${item.image_url ? "has-image" : ""}"
+        href="article.html?id=${encodeURIComponent(item.id)}"
+        ${
+          item.image_url
+            ? `style="background-image:url('${escapeAttribute(
+                item.image_url
+              )}')"`
+            : ""
+        }
+      >
+        ${
+          item.image_url
+            ? ""
+            : '<span class="media-placeholder-label">News image slot</span>'
+        }
+      </a>
+
+      <div class="news-copy">
+        <p class="eyebrow">
+          <a
+            class="news-group-label"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            ${escapeHtml(group.name)}
+          </a>
+
+          <span>${formatDate(item.published_at)}</span>
+        </p>
+
+        <h3>
+          <a href="article.html?id=${encodeURIComponent(item.id)}">
+            ${escapeHtml(item.title)}
+          </a>
+        </h3>
+
+        <p>${escapeHtml(item.excerpt || "")}</p>
+
+        <a
+          class="text-link"
+          href="article.html?id=${encodeURIComponent(item.id)}"
+        >
+          Read story <span>↗</span>
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function renderNewsGroupNavigation(posts, groups, selectedGroup) {
+  const shell = document.getElementById("newsGroupShell");
+  const nav = document.getElementById("newsGroupFilters");
+  const intro = document.getElementById("newsGroupIntro");
+
+  if (!shell || !nav || !intro) {
+    return;
+  }
+
+  const groupMap = new Map();
+
+  groups.forEach(group => {
+    groupMap.set(group.slug, {
+      ...group,
+      count: 0
+    });
+  });
+
+  posts.forEach(post => {
+    const group = groupForNewsPost(post, groups);
+
+    if (!group?.slug) {
+      return;
+    }
+
+    if (!groupMap.has(group.slug)) {
+      groupMap.set(group.slug, {
+        ...group,
+        count: 0
+      });
+    }
+
+    groupMap.get(group.slug).count += 1;
+  });
+
+  const availableGroups = [...groupMap.values()].sort(
+    (a, b) =>
+      Number(a.display_order || 999) -
+        Number(b.display_order || 999) ||
+      a.name.localeCompare(b.name)
+  );
+
+  shell.hidden = false;
+
+  nav.innerHTML = `
+    <a
+      class="news-group-chip ${selectedGroup ? "" : "active"}"
+      href="news.html"
+    >
+      <span>All news</span>
+      <strong>${posts.length}</strong>
+    </a>
+
+    ${availableGroups
+      .map(
+        group => `
+          <a
+            class="news-group-chip ${
+              selectedGroup?.slug === group.slug ? "active" : ""
+            }"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            <span>${escapeHtml(group.name)}</span>
+            <strong>${group.count}</strong>
+          </a>
+        `
+      )
+      .join("")}
+  `;
+
+  if (selectedGroup) {
+    intro.hidden = false;
+
+    intro.innerHTML = `
+      <p class="eyebrow">News group</p>
+      <h2>${escapeHtml(selectedGroup.name)}</h2>
+      <p>
+        ${escapeHtml(
+          selectedGroup.description ||
+            `All ${selectedGroup.name.toLowerCase()} stories from Imperial AC.`
+        )}
+      </p>
+    `;
+  } else {
+    intro.hidden = true;
+    intro.innerHTML = "";
+  }
 }
 
 async function renderNews(targetId, limit = null) {
   const mount = document.getElementById(targetId);
-  if (!mount) return;
+
+  if (!mount) {
+    return;
+  }
+
   const section = mount.closest("section");
+
   if (!siteSettings.show_news) {
     if (targetId !== "allNews") {
       section?.setAttribute("hidden", "");
       return;
     }
-    mount.innerHTML = emptyState("News is not public yet", "The club will open this section when its publishing process is ready.");
+
+    mount.innerHTML = emptyState(
+      "News is not public yet",
+      "The club will open this section when its publishing process is ready."
+    );
+
     return;
   }
+
   section?.removeAttribute("hidden");
+
   const client = getCmsClient();
+
   if (!client) {
-    mount.innerHTML = emptyState("Club news coming soon", "Official stories will appear here once the club is ready to publish them.");
+    mount.innerHTML = emptyState(
+      "News could not be loaded",
+      "The website connection is not configured."
+    );
+
     return;
   }
-  let query = client.from("news_posts").select("*").eq("published", true).order("published_at", { ascending: false });
-  if (limit) query = query.limit(limit);
-  const { data, error } = await query;
-  if (error || !data?.length) {
-    mount.innerHTML = emptyState("Club news coming soon", "Official stories will appear here once the club is ready to publish them.");
+
+  const [groups, newsResponse] = await Promise.all([
+    loadPublicNewsGroups(true),
+
+    client
+      .from("news_posts")
+      .select("*")
+      .eq("published", true)
+      .order("published_at", {
+        ascending: false
+      })
+  ]);
+
+  if (newsResponse.error) {
+    console.error(
+      "Could not load published news:",
+      newsResponse.error
+    );
+
+    mount.innerHTML = emptyState(
+      "News could not be loaded",
+      "Please refresh the page or try again shortly."
+    );
+
     return;
   }
-  mount.innerHTML = data.map(item => `
-    <article class="card news-card reveal">
-      ${item.image_url ? `<img src="${escapeAttribute(item.image_url)}" alt="">` : '<div class="news-placeholder">IMPERIAL AC</div>'}
-      <div class="card-body">
-        <div class="news-meta"><span>${escapeHtml(item.category || "Club News")}</span><span>${formatDate(item.published_at)}</span></div>
-        <h3>${escapeHtml(item.title)}</h3>
-        <p>${escapeHtml(item.excerpt || "")}</p>
-        <a class="text-link" href="article.html?id=${encodeURIComponent(item.id)}">Read story →</a>
-      </div>
-    </article>`).join("");
+
+  const groupsLoadedSuccessfully = publicNewsGroupsLoaded;
+
+  let posts = (newsResponse.data || []).filter(post => {
+    if (!post.group_id) {
+      return true;
+    }
+
+    if (!groupsLoadedSuccessfully) {
+      return true;
+    }
+
+    return groups.some(group => group.id === post.group_id);
+  });
+
+  if (targetId === "allNews") {
+    const requestedSlug =
+      new URLSearchParams(window.location.search).get("group");
+
+    const possibleGroups = [
+      ...groups,
+      ...posts.map(post => groupForNewsPost(post, groups))
+    ];
+
+    const selectedGroup = requestedSlug
+      ? possibleGroups.find(
+          group => group.slug === requestedSlug
+        )
+      : null;
+
+    renderNewsGroupNavigation(
+      posts,
+      groups,
+      selectedGroup
+    );
+
+    if (requestedSlug && !selectedGroup) {
+      mount.innerHTML = emptyState(
+        "News group not found",
+        "This group may have been hidden, renamed or removed."
+      );
+
+      return;
+    }
+
+    if (selectedGroup) {
+      posts = posts.filter(
+        post =>
+          groupForNewsPost(post, groups).slug ===
+          selectedGroup.slug
+      );
+
+      document.title =
+        `${selectedGroup.name} | Imperial AC News`;
+    }
+  }
+
+  if (limit) {
+    posts = posts.slice(0, limit);
+  }
+
+  if (!posts.length) {
+    mount.innerHTML = emptyState(
+      targetId === "allNews"
+        ? "No published stories yet"
+        : "Club news coming soon",
+      targetId === "allNews"
+        ? "Published Imperial AC stories will appear here."
+        : "The latest club stories will appear here."
+    );
+
+    return;
+  }
+
+  mount.innerHTML = posts
+    .map((item, index) =>
+      newsCardMarkup(item, index, targetId)
+    )
+    .join("");
+
   observeReveal();
 }
 
@@ -221,15 +588,13 @@ async function renderGallery() {
     mount.innerHTML = emptyState("Gallery coming soon", "Official club photographs will be published here.");
     return;
   }
-  mount.innerHTML = data.map(item => `
-    <article class="gallery-photo reveal">
-      <img src="${escapeAttribute(item.image_url)}" alt="${escapeAttribute(item.title || "Imperial AC gallery image")}">
-      <div class="gallery-caption"><strong>${escapeHtml(item.title || "Imperial AC")}</strong><span>${escapeHtml(item.category || "Club")}</span></div>
-    </article>`).join("");
+  mount.innerHTML = data.map((item, index) => `
+    <figure class="gallery-item ${index % 5 === 0 ? "gallery-item--wide" : ""} reveal">
+      <img src="${escapeAttribute(item.image_url)}" alt="${escapeAttribute(item.title || "Imperial AC")}" loading="lazy">
+      <figcaption><strong>${escapeHtml(item.title || "Imperial AC")}</strong><span>${escapeHtml(item.category || "Club")}</span></figcaption>
+    </figure>`).join("");
   observeReveal();
 }
-
-
 
 async function renderFixtures() {
   const loading = document.getElementById("fixtureLoading");
@@ -237,159 +602,261 @@ async function renderFixtures() {
   const resultsSection = document.querySelector("[data-fixture-results-section]");
   const upcomingMount = document.getElementById("upcomingFixtureList");
   const resultsMount = document.getElementById("resultFixtureList");
-
-  if (!upcomingMount || !resultsMount) return;
+  const homeMatch = document.getElementById("homeMatch");
+  if (!upcomingMount && !resultsMount && !homeMatch) return;
 
   const client = getCmsClient();
-
   if (!client) {
-    if (loading) loading.innerHTML = emptyState(
-      "Fixtures awaiting confirmation",
-      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
-    );
+    if (loading) loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
+    if (homeMatch) renderHomeMatch(null);
     return;
   }
 
-  const { data, error } = await client
-    .from("fixtures")
-    .select("*")
-    .eq("published", true)
-    .order("match_date", { ascending: true });
-
+  const { data, error } = await client.from("fixtures").select("*").eq("published", true).order("match_date", { ascending: true });
   if (error || !data?.length) {
-    if (loading) loading.innerHTML = emptyState(
-      "Fixtures awaiting confirmation",
-      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
-    );
+    if (loading) loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
+    if (homeMatch) renderHomeMatch(null);
     return;
   }
 
+  const upcoming = data.filter(item => item.status !== "result").sort(compareFixtureDatesAscending);
+  const results = data.filter(item => item.status === "result").sort(compareFixtureDatesDescending);
+  if (homeMatch) renderHomeMatch(upcoming[0] || results[0] || null);
+
+  if (!upcomingMount || !resultsMount) return;
   if (loading) loading.hidden = true;
-
-  const upcoming = data
-    .filter(item => item.status !== "result")
-    .sort(compareFixtureDatesAscending);
-
-  const results = data
-    .filter(item => item.status === "result")
-    .sort(compareFixtureDatesDescending);
 
   if (upcoming.length) {
     upcomingSection?.removeAttribute("hidden");
     upcomingMount.innerHTML = upcoming.map(renderFixtureRow).join("");
-  } else {
-    upcomingSection?.setAttribute("hidden", "");
-  }
+  } else upcomingSection?.setAttribute("hidden", "");
 
   if (results.length) {
     resultsSection?.removeAttribute("hidden");
     resultsMount.innerHTML = results.map(renderFixtureRow).join("");
-  } else {
-    resultsSection?.setAttribute("hidden", "");
-  }
+  } else resultsSection?.setAttribute("hidden", "");
 
   if (!upcoming.length && !results.length && loading) {
     loading.hidden = false;
-    loading.innerHTML = emptyState(
-      "Fixtures awaiting confirmation",
-      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
-    );
+    loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
   }
-
   observeReveal();
+}
+
+function renderHomeMatch(item) {
+  const mount = document.getElementById("homeMatch");
+  if (!mount) return;
+  if (!item) {
+    mount.innerHTML = `<div class="match-date"><p class="eyebrow">Next match</p><strong>Date TBC</strong><span>MPL</span></div><div class="match-teams"><div><span class="team-mark">IAC</span><strong>Imperial AC</strong></div><span class="score-mark">VS</span><div><span class="team-mark team-mark--outline">OPP</span><strong>Opponent TBC</strong></div></div><div class="match-detail"><span>Kick-off TBC</span><span>Venue TBC</span></div>`;
+    return;
+  }
+  const score = item.status === "result" ? `${item.home_score ?? "–"} : ${item.away_score ?? "–"}` : "VS";
+  mount.innerHTML = `<div class="match-date"><p class="eyebrow">${item.status === "result" ? "Latest result" : "Next match"}</p><strong>${escapeHtml(formatMatchDate(item.match_date))}</strong><span>${escapeHtml(item.competition || "MPL")}</span></div><div class="match-teams"><div><span class="team-mark">${initials(item.home_team)}</span><strong>${escapeHtml(item.home_team)}</strong></div><span class="score-mark">${score}</span><div><span class="team-mark team-mark--outline">${initials(item.away_team)}</span><strong>${escapeHtml(item.away_team)}</strong></div></div><div class="match-detail"><span>${escapeHtml(formatMatchTime(item.kickoff_time))}</span><span>${escapeHtml(item.venue || "Venue TBC")}</span></div>`;
 }
 
 function renderFixtureRow(item) {
   const status = item.status || "upcoming";
-  const score = status === "result"
-    ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}`
-    : status === "postponed"
-      ? "PPD"
-      : status === "cancelled"
-        ? "CAN"
-        : "VS";
-
-  const details = [
-    escapeHtml(item.competition || "MPL"),
-    escapeHtml(formatMatchTime(item.kickoff_time))
-  ].filter(Boolean).join(" • ");
-
-  const location = [item.venue, item.notes]
-    .filter(Boolean)
-    .map(escapeHtml)
-    .join(" • ") || "Venue TBC";
-
-  return `
-    <article class="fixture-row reveal">
-      <div class="fixture-date">
-        <strong>${escapeHtml(formatMatchDate(item.match_date))}</strong>
-        <span>${details}</span>
-      </div>
-      <div class="fixture-match">
-        <strong class="home">${escapeHtml(item.home_team)}</strong>
-        <div class="fixture-score">${score}</div>
-        <strong>${escapeHtml(item.away_team)}</strong>
-      </div>
-      <div class="fixture-venue">${location}</div>
-    </article>
-  `;
-}
-
-function fixtureDateValue(item) {
-  if (!item.match_date) return Number.MAX_SAFE_INTEGER;
-  return new Date(`${item.match_date}T${String(item.kickoff_time || "12:00:00").slice(0, 8)}`).getTime();
-}
-
-function compareFixtureDatesAscending(a, b) {
-  return fixtureDateValue(a) - fixtureDateValue(b);
-}
-
-function compareFixtureDatesDescending(a, b) {
-  return fixtureDateValue(b) - fixtureDateValue(a);
-}
-
-function formatMatchDate(value) {
-  if (!value) return "Date TBC";
-  return new Intl.DateTimeFormat("en-ZA", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  }).format(new Date(`${value}T12:00:00`));
-}
-
-function formatMatchTime(value) {
-  if (!value) return "Time TBC";
-  return String(value).slice(0, 5);
+  const score = status === "result" ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}` : status === "postponed" ? "PPD" : status === "cancelled" ? "CAN" : "VS";
+  const details = [item.competition || "MPL", formatMatchTime(item.kickoff_time)].filter(Boolean).map(escapeHtml).join(" • ");
+  const location = [item.venue, item.notes].filter(Boolean).map(escapeHtml).join(" • ") || "Venue TBC";
+  return `<article class="fixture-row reveal"><div class="fixture-date"><strong>${escapeHtml(formatMatchDate(item.match_date))}</strong><span>${details}</span></div><div class="fixture-teams"><span>${escapeHtml(item.home_team)}</span><strong>${score}</strong><span>${escapeHtml(item.away_team)}</span></div><div class="fixture-location">${location}</div></article>`;
 }
 
 async function renderArticle() {
   const mount = document.getElementById("newsArticle");
-  if (!mount) return;
-  if (!siteSettings.show_news) {
-    mount.innerHTML = emptyState("News is not public yet", "The club will open this section when its publishing process is ready.");
-    return;
-  }
-  const id = new URLSearchParams(window.location.search).get("id");
-  const client = getCmsClient();
-  if (!id || !client) {
-    mount.innerHTML = emptyState("Story unavailable", "This story could not be loaded.");
-    return;
-  }
-  const { data, error } = await client.from("news_posts").select("*").eq("id", id).eq("published", true).maybeSingle();
-  if (error || !data) {
-    mount.innerHTML = emptyState("Story unavailable", "This story may have been removed or returned to draft status.");
-    return;
-  }
-  mount.innerHTML = `<article class="article-layout reveal">
-    <div class="article-header"><p class="eyebrow">${escapeHtml(data.category || "Club News")}</p><h1 class="heading">${escapeHtml(data.title)}</h1><p class="subheading">${escapeHtml(data.excerpt || "")}</p><div class="news-meta" style="margin-top:22px"><span>Imperial AC</span><span>${formatDate(data.published_at)}</span></div></div>
-    ${data.image_url ? `<img class="article-image" src="${escapeAttribute(data.image_url)}" alt="">` : ""}
-    <div class="article-body">${paragraphs(data.body || data.excerpt || "")}</div>
-  </article>`;
-  observeReveal();
-}
 
-function paragraphs(value = "") {
-  return String(value).split(/\n{2,}/).filter(Boolean).map(paragraph => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
+  if (!mount) {
+    return;
+  }
+
+  if (!siteSettings.show_news) {
+    mount.innerHTML = emptyState(
+      "News is not public yet",
+      "The club will open this section when its publishing process is ready."
+    );
+
+    return;
+  }
+
+  const id =
+    new URLSearchParams(window.location.search).get("id");
+
+  const client = getCmsClient();
+
+  if (!id || !client) {
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story could not be loaded."
+    );
+
+    return;
+  }
+
+  const [groups, storyResponse] = await Promise.all([
+    loadPublicNewsGroups(true),
+
+    client
+      .from("news_posts")
+      .select("*")
+      .eq("id", id)
+      .eq("published", true)
+      .maybeSingle()
+  ]);
+
+  if (storyResponse.error) {
+    console.error(
+      "Could not load news article:",
+      storyResponse.error
+    );
+
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "The story could not be loaded. Please try again."
+    );
+
+    return;
+  }
+
+  const data = storyResponse.data;
+
+  if (!data) {
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story may have been removed or returned to draft."
+    );
+
+    return;
+  }
+
+  const assignedGroup = data.group_id
+    ? groups.find(group => group.id === data.group_id)
+    : null;
+
+  if (
+    data.group_id &&
+    publicNewsGroupsLoaded &&
+    !assignedGroup
+  ) {
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story belongs to a group that is currently hidden."
+    );
+
+    return;
+  }
+
+  const group = groupForNewsPost(data, groups);
+
+  let related = [];
+
+  if (data.group_id) {
+    const relatedResponse = await client
+      .from("news_posts")
+      .select("*")
+      .eq("published", true)
+      .eq("group_id", data.group_id)
+      .neq("id", id)
+      .order("published_at", {
+        ascending: false
+      })
+      .limit(3);
+
+    if (relatedResponse.error) {
+      console.error(
+        "Could not load related stories:",
+        relatedResponse.error
+      );
+    } else {
+      related = relatedResponse.data || [];
+    }
+  }
+
+  const storyBody =
+    data.body?.trim() ||
+    data.excerpt?.trim() ||
+    "The full story will be added soon.";
+
+  const relatedMarkup = related.length
+    ? `
+      <section class="article-related">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">More from this group</p>
+            <h2 class="heading">
+              ${escapeHtml(group.name)}
+            </h2>
+          </div>
+
+          <a
+            class="text-link"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            View group <span>↗</span>
+          </a>
+        </div>
+
+        <div class="news-grid">
+          ${related
+            .map((item, index) =>
+              newsCardMarkup(item, index, "relatedNews")
+            )
+            .join("")}
+        </div>
+      </section>
+    `
+    : "";
+
+  mount.innerHTML = `
+    <header class="article-header">
+      <p class="eyebrow">
+        <a
+          class="article-group-link"
+          href="news.html?group=${encodeURIComponent(group.slug)}"
+        >
+          ${escapeHtml(group.name)}
+        </a>
+      </p>
+
+      <h1>${escapeHtml(data.title)}</h1>
+
+      ${
+        data.excerpt
+          ? `<p class="article-lead">${escapeHtml(data.excerpt)}</p>`
+          : ""
+      }
+
+      <div class="article-meta">
+        <span>Imperial AC</span>
+        <span>${formatDate(data.published_at)}</span>
+      </div>
+    </header>
+
+    ${
+      data.image_url
+        ? `
+          <img
+            class="article-image"
+            src="${escapeAttribute(data.image_url)}"
+            alt="${escapeAttribute(data.title)}"
+          >
+        `
+        : `
+          <div class="article-image media-placeholder">
+            <span>Article image slot</span>
+          </div>
+        `
+    }
+
+    <div class="article-body">
+      ${paragraphs(storyBody)}
+    </div>
+
+    ${relatedMarkup}
+  `;
+
+  document.title = `${data.title} | Imperial AC`;
+
+  observeReveal();
 }
 
 function setupForms() {
@@ -407,14 +874,18 @@ function setupForms() {
   });
 }
 
-function formatDate(value) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-ZA", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
+function fixtureDateValue(item) {
+  if (!item.match_date) return Number.MAX_SAFE_INTEGER;
+  return new Date(`${item.match_date}T${String(item.kickoff_time || "12:00:00").slice(0, 8)}`).getTime();
 }
-
-function escapeHtml(value = "") {
-  return String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
-}
+function compareFixtureDatesAscending(a, b) { return fixtureDateValue(a) - fixtureDateValue(b); }
+function compareFixtureDatesDescending(a, b) { return fixtureDateValue(b) - fixtureDateValue(a); }
+function formatMatchDate(value) { if (!value) return "Date TBC"; return new Intl.DateTimeFormat("en-ZA", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00`)); }
+function formatMatchTime(value) { return value ? String(value).slice(0, 5) : "Time TBC"; }
+function formatDate(value) { if (!value) return ""; return new Intl.DateTimeFormat("en-ZA", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value)); }
+function initials(value = "") { return String(value).split(/\s+/).filter(Boolean).slice(0, 3).map(part => part[0]).join("").toUpperCase() || "FC"; }
+function paragraphs(value = "") { return String(value).split(/\n{2,}/).filter(Boolean).map(p => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join(""); }
+function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
 function escapeAttribute(value = "") { return escapeHtml(value); }
 
 let revealObserver;
@@ -433,12 +904,12 @@ function observeReveal() {
 }
 
 async function initialiseSite() {
+  await loadSiteSettings();
+
   renderHeader();
   renderFooter();
   observeReveal();
-  await loadSiteSettings();
-  renderHeader();
-  renderFooter();
+
   await Promise.all([
     renderStandings(),
     renderFixtures(),
@@ -447,7 +918,10 @@ async function initialiseSite() {
     renderGallery(),
     renderArticle()
   ]);
+
   setupForms();
+  setupCookieControls();
+  renderCookieNotice();
   observeReveal();
 }
 

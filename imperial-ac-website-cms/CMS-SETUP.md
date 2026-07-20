@@ -1,85 +1,36 @@
-# Imperial AC Live Content Setup
+# Imperial AC CMS setup
 
-The public website is static, but Standings, News, Gallery and page visibility are connected to Supabase. This lets an authorised club administrator edit content at `/admin.html` without redeploying the website.
+1. Create or open the existing Imperial AC Supabase project.
+2. Back up the database before changing a live project.
+3. Open **SQL Editor** and run `supabase-schema.sql`.
+4. Open **Authentication > Users** and create accounts only for trusted club administrators.
+5. Copy the Project URL and anon/publishable key from **Project Settings > API**.
+6. Paste them into `js/cms-config.js`.
+7. Open `admin.html`, sign in and test each dashboard area.
+8. Confirm that public pages can read published content without signing in.
 
-## 1. Create a Supabase project
+## Existing database compatibility
 
-Create a free Supabase project and wait for it to finish setting up.
-
-## 2. Create the database tables and security rules
-
-1. Open **SQL Editor** in Supabase.
-2. Open `supabase-schema.sql` from this website folder.
-3. Copy the whole file into the SQL Editor.
-4. Run it once.
-
-This creates:
+The redesign keeps the original content model:
 
 - `standings`
+- `fixtures`
 - `news_posts`
 - `gallery_items`
 - `site_settings`
-- a public image bucket named `club-media`
-- Row Level Security policies
+- public `club-media` storage bucket
 
-## 3. Create the dashboard login
+Running the schema uses `create table if not exists`, so it can be used to add the fixtures table without deleting existing content. Review policy names before running against a heavily customised live project.
 
-1. Open **Authentication → Users**.
-2. Create one user for the trusted club administrator.
-3. Use a strong password that is not shared publicly.
+## Image placeholders
 
-The website does not contain the password.
+Static homepage and club page photography is deliberately represented by labelled image slots. Replace those blocks in the HTML with your own `<img>` elements. News and gallery images are controlled through the dashboard.
 
-## 4. Connect the website
 
-Open `js/cms-config.js` and paste your project details:
+## News groups upgrade
 
-```js
-window.IMPERIAL_CMS = {
-  supabaseUrl: "https://YOUR-PROJECT.supabase.co",
-  supabaseAnonKey: "YOUR-PUBLISHABLE-OR-ANON-KEY",
-  storageBucket: "club-media"
-};
-```
+For an existing database, run:
 
-Find these values in **Project Settings → API**.
+`news-groups-migration.sql`
 
-Do not paste a `service_role` key into the website. Only use the browser-safe publishable/anon key.
-
-## 5. Deploy this updated folder once
-
-Upload the new ZIP to the existing Vercel project, or connect the folder through GitHub or the Vercel CLI.
-
-After that initial deployment, normal content updates do not require another deployment.
-
-## 6. Open the private dashboard
-
-Go to:
-
-```text
-https://YOUR-DOMAIN.vercel.app/admin.html
-```
-
-Sign in with the Supabase administrator account.
-
-From the dashboard you can:
-
-- Add, rename and delete teams
-- Update standings live
-- Create draft or published news
-- Upload gallery images
-- Show or hide News, Gallery and Standings in the public navigation
-
-## Default public state
-
-- Senior MPL side only
-- No junior-team or player pages
-- Standings visible with Imperial AC on zero
-- News hidden from navigation
-- Gallery hidden from navigation
-- Fixtures show “awaiting confirmation”
-
-## Social details already added
-
-- Email: `06imperialfc@gmail.com`
-- Facebook, Instagram and WhatsApp Channel links are included in the footer and contact page.
+This adds the `news_groups` table, adds `group_id` to `news_posts`, imports existing category names, creates the required RLS policies and seeds useful starter groups.
