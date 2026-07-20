@@ -75,14 +75,14 @@ create policy "public read published news groups"
 on public.news_groups
 for select
 to anon, authenticated
-using (published = true or auth.role() = 'authenticated');
+using (published = true);
 
 create policy "admin manage news groups"
 on public.news_groups
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_club_admin())
+with check (public.is_club_admin());
 
 grant select on public.news_groups to anon;
 grant select, insert, update, delete on public.news_groups to authenticated;

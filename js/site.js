@@ -214,30 +214,63 @@ function slugifyNewsGroup(value = "") {
     .replace(/^-+|-+$/g, "");
 }
 
-async function loadPublicNewsGroups() {
-  if (publicNewsGroupsLoaded) return publicNewsGroups;
-  publicNewsGroupsLoaded = true;
-  const client = getCmsClient();
-  if (!client) return publicNewsGroups;
+async function loadPublicNewsGroups(force = false) {
+  if (publicNewsGroupsLoaded && !force) {
+    return publicNewsGroups;
+  }
 
-  const { data, error } = await client()
+  const client = getCmsClient();
+
+  if (!client) {
+    return [];
+  }
+
+  const { data, error } = await client
     .from("news_groups")
     .select("*")
     .eq("published", true)
     .order("display_order", { ascending: true })
     .order("name", { ascending: true });
 
-  if (!error) publicNewsGroups = data || [];
+  if (error) {
+    console.error("Could not load news groups:", error);
+    publicNewsGroupsLoaded = false;
+    return [];
+  }
+
+  publicNewsGroups = data || [];
+  publicNewsGroupsLoaded = true;
+
   return publicNewsGroups;
 }
 
 function groupForNewsPost(item, groups = publicNewsGroups) {
-  if (item.news_groups) return item.news_groups;
+  if (item.group_id) {
+    const groupById = groups.find(
+      group => group.id === item.group_id
+    );
+
+    if (groupById) {
+      return groupById;
+    }
+  }
+
   const category = item.category || "Club News";
-  return groups.find(group => group.name.toLowerCase() === category.toLowerCase()) || {
+
+  const groupByName = groups.find(
+    group =>
+      String(group.name).toLowerCase() ===
+      String(category).toLowerCase()
+  );
+
+  if (groupByName) {
+    return groupByName;
+  }
+
+  return {
     id: item.group_id || null,
     name: category,
-    slug: slugifyNewsGroup(category),
+    slug: slugifyNewsGroup(category) || "club-news",
     description: "",
     display_order: 999,
     published: true
@@ -246,58 +279,148 @@ function groupForNewsPost(item, groups = publicNewsGroups) {
 
 function newsCardMarkup(item, index = 0, targetId = "allNews") {
   const group = groupForNewsPost(item);
+
   return `
-    <article class="news-card ${index === 0 && targetId === "homeNews" ? "news-card--feature" : ""} reveal" data-news-group="${escapeAttribute(group.slug)}">
-      <a class="news-media ${item.image_url ? "has-image" : ""}" href="article.html?id=${encodeURIComponent(item.id)}" ${item.image_url ? `style="background-image:url('${escapeAttribute(item.image_url)}')"` : ""}>
-        ${item.image_url ? "" : '<span class="media-placeholder-label">News image slot</span>'}
+    <article
+      class="news-card ${
+        index === 0 && targetId === "homeNews"
+          ? "news-card--feature"
+          : ""
+      } reveal"
+      data-news-group="${escapeAttribute(group.slug)}"
+    >
+      <a
+        class="news-media ${item.image_url ? "has-image" : ""}"
+        href="article.html?id=${encodeURIComponent(item.id)}"
+        ${
+          item.image_url
+            ? `style="background-image:url('${escapeAttribute(
+                item.image_url
+              )}')"`
+            : ""
+        }
+      >
+        ${
+          item.image_url
+            ? ""
+            : '<span class="media-placeholder-label">News image slot</span>'
+        }
       </a>
+
       <div class="news-copy">
         <p class="eyebrow">
-          <a class="news-group-label" href="news.html?group=${encodeURIComponent(group.slug)}">${escapeHtml(group.name)}</a>
+          <a
+            class="news-group-label"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            ${escapeHtml(group.name)}
+          </a>
+
           <span>${formatDate(item.published_at)}</span>
         </p>
-        <h3><a href="article.html?id=${encodeURIComponent(item.id)}">${escapeHtml(item.title)}</a></h3>
+
+        <h3>
+          <a href="article.html?id=${encodeURIComponent(item.id)}">
+            ${escapeHtml(item.title)}
+          </a>
+        </h3>
+
         <p>${escapeHtml(item.excerpt || "")}</p>
-        <a class="text-link" href="article.html?id=${encodeURIComponent(item.id)}">Read story <span>↗</span></a>
+
+        <a
+          class="text-link"
+          href="article.html?id=${encodeURIComponent(item.id)}"
+        >
+          Read story <span>↗</span>
+        </a>
       </div>
-    </article>`;
+    </article>
+  `;
 }
 
 function renderNewsGroupNavigation(posts, groups, selectedGroup) {
   const shell = document.getElementById("newsGroupShell");
   const nav = document.getElementById("newsGroupFilters");
   const intro = document.getElementById("newsGroupIntro");
-  if (!shell || !nav || !intro) return;
 
-  const postGroups = new Map();
-  posts.forEach(post => {
-    const group = groupForNewsPost(post, groups);
-    if (!group?.slug) return;
-    const current = postGroups.get(group.slug) || { ...group, count: 0 };
-    current.count += 1;
-    postGroups.set(group.slug, current);
+  if (!shell || !nav || !intro) {
+    return;
+  }
+
+  const groupMap = new Map();
+
+  groups.forEach(group => {
+    groupMap.set(group.slug, {
+      ...group,
+      count: 0
+    });
   });
 
-  const availableGroups = [...postGroups.values()].sort((a, b) =>
-    Number(a.display_order || 999) - Number(b.display_order || 999) || a.name.localeCompare(b.name)
+  posts.forEach(post => {
+    const group = groupForNewsPost(post, groups);
+
+    if (!group?.slug) {
+      return;
+    }
+
+    if (!groupMap.has(group.slug)) {
+      groupMap.set(group.slug, {
+        ...group,
+        count: 0
+      });
+    }
+
+    groupMap.get(group.slug).count += 1;
+  });
+
+  const availableGroups = [...groupMap.values()].sort(
+    (a, b) =>
+      Number(a.display_order || 999) -
+        Number(b.display_order || 999) ||
+      a.name.localeCompare(b.name)
   );
 
   shell.hidden = false;
+
   nav.innerHTML = `
-    <a class="news-group-chip ${selectedGroup ? "" : "active"}" href="news.html">
-      <span>All news</span><strong>${posts.length}</strong>
+    <a
+      class="news-group-chip ${selectedGroup ? "" : "active"}"
+      href="news.html"
+    >
+      <span>All news</span>
+      <strong>${posts.length}</strong>
     </a>
-    ${availableGroups.map(group => `
-      <a class="news-group-chip ${selectedGroup?.slug === group.slug ? "active" : ""}" href="news.html?group=${encodeURIComponent(group.slug)}">
-        <span>${escapeHtml(group.name)}</span><strong>${group.count}</strong>
-      </a>`).join("")}`;
+
+    ${availableGroups
+      .map(
+        group => `
+          <a
+            class="news-group-chip ${
+              selectedGroup?.slug === group.slug ? "active" : ""
+            }"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            <span>${escapeHtml(group.name)}</span>
+            <strong>${group.count}</strong>
+          </a>
+        `
+      )
+      .join("")}
+  `;
 
   if (selectedGroup) {
     intro.hidden = false;
+
     intro.innerHTML = `
       <p class="eyebrow">News group</p>
       <h2>${escapeHtml(selectedGroup.name)}</h2>
-      <p>${escapeHtml(selectedGroup.description || `All ${selectedGroup.name.toLowerCase()} stories from Imperial AC.`)}</p>`;
+      <p>
+        ${escapeHtml(
+          selectedGroup.description ||
+            `All ${selectedGroup.name.toLowerCase()} stories from Imperial AC.`
+        )}
+      </p>
+    `;
   } else {
     intro.hidden = true;
     intro.innerHTML = "";
@@ -306,7 +429,11 @@ function renderNewsGroupNavigation(posts, groups, selectedGroup) {
 
 async function renderNews(targetId, limit = null) {
   const mount = document.getElementById(targetId);
-  if (!mount) return;
+
+  if (!mount) {
+    return;
+  }
+
   const section = mount.closest("section");
 
   if (!siteSettings.show_news) {
@@ -314,65 +441,133 @@ async function renderNews(targetId, limit = null) {
       section?.setAttribute("hidden", "");
       return;
     }
-    mount.innerHTML = emptyState("News is not public yet", "The club will open this section when its publishing process is ready.");
+
+    mount.innerHTML = emptyState(
+      "News is not public yet",
+      "The club will open this section when its publishing process is ready."
+    );
+
     return;
   }
 
   section?.removeAttribute("hidden");
+
   const client = getCmsClient();
+
   if (!client) {
-    mount.innerHTML = emptyState("Club news coming soon", "Official stories will appear here once the club is ready to publish them.");
+    mount.innerHTML = emptyState(
+      "News could not be loaded",
+      "The website connection is not configured."
+    );
+
     return;
   }
 
-  const groups = await loadPublicNewsGroups();
-  let query = client
-    .from("news_posts")
-    .select("*, news_groups(id,name,slug,description,display_order,published)")
-    .eq("published", true)
-    .order("published_at", { ascending: false });
+  const [groups, newsResponse] = await Promise.all([
+    loadPublicNewsGroups(true),
 
-  if (limit) query = query.limit(Math.max(limit * 4, limit));
-  let response = await query;
-
-  if (response.error) {
-    let fallback = client
+    client
       .from("news_posts")
       .select("*")
       .eq("published", true)
-      .order("published_at", { ascending: false });
-    if (limit) fallback = fallback.limit(Math.max(limit * 4, limit));
-    response = await fallback;
-  }
+      .order("published_at", {
+        ascending: false
+      })
+  ]);
 
-  if (response.error || !response.data?.length) {
-    mount.innerHTML = emptyState("Club news coming soon", "Official stories will appear here once the club is ready to publish them.");
+  if (newsResponse.error) {
+    console.error(
+      "Could not load published news:",
+      newsResponse.error
+    );
+
+    mount.innerHTML = emptyState(
+      "News could not be loaded",
+      "Please refresh the page or try again shortly."
+    );
+
     return;
   }
 
-  let posts = response.data.filter(item => !item.group_id || item.news_groups);
-  if (limit) posts = posts.slice(0, limit);
+  const groupsLoadedSuccessfully = publicNewsGroupsLoaded;
 
-  if (targetId === "allNews") {
-    const requestedSlug = new URLSearchParams(window.location.search).get("group");
-    const selectedGroup = requestedSlug
-      ? [...groups, ...posts.map(post => groupForNewsPost(post, groups))].find(group => group.slug === requestedSlug)
-      : null;
-
-    renderNewsGroupNavigation(posts, groups, selectedGroup);
-
-    if (selectedGroup) {
-      posts = posts.filter(post => groupForNewsPost(post, groups).slug === selectedGroup.slug);
-      document.title = `${selectedGroup.name} | Imperial AC News`;
+  let posts = (newsResponse.data || []).filter(post => {
+    if (!post.group_id) {
+      return true;
     }
 
-    if (!posts.length) {
-      mount.innerHTML = emptyState("No stories in this group yet", "The club can add or move stories into this group from the dashboard.");
+    if (!groupsLoadedSuccessfully) {
+      return true;
+    }
+
+    return groups.some(group => group.id === post.group_id);
+  });
+
+  if (targetId === "allNews") {
+    const requestedSlug =
+      new URLSearchParams(window.location.search).get("group");
+
+    const possibleGroups = [
+      ...groups,
+      ...posts.map(post => groupForNewsPost(post, groups))
+    ];
+
+    const selectedGroup = requestedSlug
+      ? possibleGroups.find(
+          group => group.slug === requestedSlug
+        )
+      : null;
+
+    renderNewsGroupNavigation(
+      posts,
+      groups,
+      selectedGroup
+    );
+
+    if (requestedSlug && !selectedGroup) {
+      mount.innerHTML = emptyState(
+        "News group not found",
+        "This group may have been hidden, renamed or removed."
+      );
+
       return;
+    }
+
+    if (selectedGroup) {
+      posts = posts.filter(
+        post =>
+          groupForNewsPost(post, groups).slug ===
+          selectedGroup.slug
+      );
+
+      document.title =
+        `${selectedGroup.name} | Imperial AC News`;
     }
   }
 
-  mount.innerHTML = posts.map((item, index) => newsCardMarkup(item, index, targetId)).join("");
+  if (limit) {
+    posts = posts.slice(0, limit);
+  }
+
+  if (!posts.length) {
+    mount.innerHTML = emptyState(
+      targetId === "allNews"
+        ? "No published stories yet"
+        : "Club news coming soon",
+      targetId === "allNews"
+        ? "Published Imperial AC stories will appear here."
+        : "The latest club stories will appear here."
+    );
+
+    return;
+  }
+
+  mount.innerHTML = posts
+    .map((item, index) =>
+      newsCardMarkup(item, index, targetId)
+    )
+    .join("");
+
   observeReveal();
 }
 
@@ -469,80 +664,198 @@ function renderFixtureRow(item) {
 
 async function renderArticle() {
   const mount = document.getElementById("newsArticle");
-  if (!mount) return;
+
+  if (!mount) {
+    return;
+  }
+
   if (!siteSettings.show_news) {
-    mount.innerHTML = emptyState("News is not public yet", "The club will open this section when its publishing process is ready.");
+    mount.innerHTML = emptyState(
+      "News is not public yet",
+      "The club will open this section when its publishing process is ready."
+    );
+
     return;
   }
 
-  const id = new URLSearchParams(window.location.search).get("id");
+  const id =
+    new URLSearchParams(window.location.search).get("id");
+
   const client = getCmsClient();
+
   if (!id || !client) {
-    mount.innerHTML = emptyState("Story unavailable", "This story could not be loaded.");
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story could not be loaded."
+    );
+
     return;
   }
 
-  let response = await client()
-    .from("news_posts")
-    .select("*, news_groups(id,name,slug,description,display_order,published)")
-    .eq("id", id)
-    .eq("published", true)
-    .maybeSingle();
+  const [groups, storyResponse] = await Promise.all([
+    loadPublicNewsGroups(true),
 
-  if (response.error) {
-    response = await client()
+    client
       .from("news_posts")
       .select("*")
       .eq("id", id)
       .eq("published", true)
-      .maybeSingle();
-  }
+      .maybeSingle()
+  ]);
 
-  const data = response.data;
-  if (response.error || !data || (data.group_id && data.news_groups === null)) {
-    mount.innerHTML = emptyState("Story unavailable", "This story may have been removed, hidden with its group or returned to draft status.");
+  if (storyResponse.error) {
+    console.error(
+      "Could not load news article:",
+      storyResponse.error
+    );
+
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "The story could not be loaded. Please try again."
+    );
+
     return;
   }
 
-  const group = groupForNewsPost(data);
+  const data = storyResponse.data;
+
+  if (!data) {
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story may have been removed or returned to draft."
+    );
+
+    return;
+  }
+
+  const assignedGroup = data.group_id
+    ? groups.find(group => group.id === data.group_id)
+    : null;
+
+  if (
+    data.group_id &&
+    publicNewsGroupsLoaded &&
+    !assignedGroup
+  ) {
+    mount.innerHTML = emptyState(
+      "Story unavailable",
+      "This story belongs to a group that is currently hidden."
+    );
+
+    return;
+  }
+
+  const group = groupForNewsPost(data, groups);
+
   let related = [];
 
   if (data.group_id) {
-    const relatedResponse = await client()
+    const relatedResponse = await client
       .from("news_posts")
-      .select("*, news_groups(id,name,slug,description,display_order,published)")
+      .select("*")
       .eq("published", true)
       .eq("group_id", data.group_id)
       .neq("id", id)
-      .order("published_at", { ascending: false })
+      .order("published_at", {
+        ascending: false
+      })
       .limit(3);
-    if (!relatedResponse.error) related = relatedResponse.data || [];
+
+    if (relatedResponse.error) {
+      console.error(
+        "Could not load related stories:",
+        relatedResponse.error
+      );
+    } else {
+      related = relatedResponse.data || [];
+    }
   }
 
-  const relatedMarkup = related.length ? `
-    <section class="article-related">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">More from this group</p>
-          <h2 class="heading">${escapeHtml(group.name)}</h2>
+  const storyBody =
+    data.body?.trim() ||
+    data.excerpt?.trim() ||
+    "The full story will be added soon.";
+
+  const relatedMarkup = related.length
+    ? `
+      <section class="article-related">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">More from this group</p>
+            <h2 class="heading">
+              ${escapeHtml(group.name)}
+            </h2>
+          </div>
+
+          <a
+            class="text-link"
+            href="news.html?group=${encodeURIComponent(group.slug)}"
+          >
+            View group <span>↗</span>
+          </a>
         </div>
-        <a class="text-link" href="news.html?group=${encodeURIComponent(group.slug)}">View group <span>↗</span></a>
-      </div>
-      <div class="news-grid">${related.map((item, index) => newsCardMarkup(item, index, "relatedNews")).join("")}</div>
-    </section>` : "";
+
+        <div class="news-grid">
+          ${related
+            .map((item, index) =>
+              newsCardMarkup(item, index, "relatedNews")
+            )
+            .join("")}
+        </div>
+      </section>
+    `
+    : "";
 
   mount.innerHTML = `
     <header class="article-header">
-      <p class="eyebrow"><a class="article-group-link" href="news.html?group=${encodeURIComponent(group.slug)}">${escapeHtml(group.name)}</a></p>
+      <p class="eyebrow">
+        <a
+          class="article-group-link"
+          href="news.html?group=${encodeURIComponent(group.slug)}"
+        >
+          ${escapeHtml(group.name)}
+        </a>
+      </p>
+
       <h1>${escapeHtml(data.title)}</h1>
-      <p class="article-lead">${escapeHtml(data.excerpt || "")}</p>
-      <div class="article-meta"><span>Imperial AC</span><span>${formatDate(data.published_at)}</span></div>
+
+      ${
+        data.excerpt
+          ? `<p class="article-lead">${escapeHtml(data.excerpt)}</p>`
+          : ""
+      }
+
+      <div class="article-meta">
+        <span>Imperial AC</span>
+        <span>${formatDate(data.published_at)}</span>
+      </div>
     </header>
-    ${data.image_url ? `<img class="article-image" src="${escapeAttribute(data.image_url)}" alt="${escapeAttribute(data.title)}">` : `<div class="article-image media-placeholder"><span>Article image slot</span></div>`}
-    <div class="article-body">${paragraphs(data.body || data.excerpt || "")}</div>
-    ${relatedMarkup}`;
+
+    ${
+      data.image_url
+        ? `
+          <img
+            class="article-image"
+            src="${escapeAttribute(data.image_url)}"
+            alt="${escapeAttribute(data.title)}"
+          >
+        `
+        : `
+          <div class="article-image media-placeholder">
+            <span>Article image slot</span>
+          </div>
+        `
+    }
+
+    <div class="article-body">
+      ${paragraphs(storyBody)}
+    </div>
+
+    ${relatedMarkup}
+  `;
 
   document.title = `${data.title} | Imperial AC`;
+
   observeReveal();
 }
 
@@ -591,12 +904,12 @@ function observeReveal() {
 }
 
 async function initialiseSite() {
+  await loadSiteSettings();
+
   renderHeader();
   renderFooter();
   observeReveal();
-  await loadSiteSettings();
-  renderHeader();
-  renderFooter();
+
   await Promise.all([
     renderStandings(),
     renderFixtures(),
@@ -605,6 +918,7 @@ async function initialiseSite() {
     renderGallery(),
     renderArticle()
   ]);
+
   setupForms();
   setupCookieControls();
   renderCookieNotice();

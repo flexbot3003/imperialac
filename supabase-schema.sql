@@ -91,10 +91,10 @@ drop policy if exists "admin manage gallery" on public.gallery_items;
 drop policy if exists "admin manage settings" on public.site_settings;
 
 create policy "public read standings" on public.standings for select to anon, authenticated using (true);
-create policy "public read fixtures" on public.fixtures for select to anon, authenticated using (published = true or auth.role() = 'authenticated');
+create policy "public read fixtures" on public.fixtures for select to anon, authenticated using (published = true);
 create policy "public read settings" on public.site_settings for select to anon, authenticated using (true);
-create policy "public read published news" on public.news_posts for select to anon, authenticated using (published = true or auth.role() = 'authenticated');
-create policy "public read published gallery" on public.gallery_items for select to anon, authenticated using (published = true or auth.role() = 'authenticated');
+create policy "public read published news" on public.news_posts for select to anon, authenticated using (published = true);
+create policy "public read published gallery" on public.gallery_items for select to anon, authenticated using (published = true);
 
 -- This matches the original repo's trusted-admin model.
 -- Only create Supabase Auth accounts for trusted club administrators.
@@ -198,14 +198,14 @@ create policy "public read published news groups"
 on public.news_groups
 for select
 to anon, authenticated
-using (published = true or auth.role() = 'authenticated');
+using (published = true);
 
 create policy "admin manage news groups"
 on public.news_groups
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_club_admin())
+with check (public.is_club_admin());
 
 grant select on public.news_groups to anon;
 grant select, insert, update, delete on public.news_groups to authenticated;
