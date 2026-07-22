@@ -5,6 +5,9 @@ let currentNews = [];
 let currentNewsGroups = [];
 let currentGallery = [];
 
+let activeGalleryUploadForm = null;
+let galleryProgressTimers = [];
+
 function configReady() {
   const config = window.IMPERIAL_CMS || {};
   return Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase?.createClient);
@@ -16,12 +19,158 @@ function client() {
   return adminClient;
 }
 
+function clearGalleryProgressTimers() {
+  galleryProgressTimers.forEach(timer => clearTimeout(timer));
+  galleryProgressTimers = [];
+}
+
+function getAdminTaskToast() {
+  let toast = document.getElementById("adminTaskToast");
+
+  if (toast) return toast;
+
+  toast = document.createElement("div");
+  toast.id = "adminTaskToast";
+  toast.className = "admin-task-toast";
+  toast.hidden = true;
+  toast.setAttribute("role", "status");
+  toast.setAttribute("aria-live", "polite");
+
+  toast.innerHTML = `
+    <span class="admin-task-toast__icon" aria-hidden="true"></span>
+    <div>
+      <strong class="admin-task-toast__title"></strong>
+      <span class="admin-task-toast__message"></span>
+    </div>
+  `;
+
+  document.body.appendChild(toast);
+  return toast;
+}
+
+function showAdminTaskToast(
+  message,
+  type = "loading",
+  options = {}
+) {
+  const toast = getAdminTaskToast();
+  const title = toast.querySelector(".admin-task-toast__title");
+  const messageElement = toast.querySelector(
+    ".admin-task-toast__message"
+  );
+
+  const titles = {
+    loading: "Please wait",
+    success: "Done",
+    error: "Something went wrong"
+  };
+
+  toast.dataset.type = type;
+  title.textContent = titles[type] || "Update";
+  messageElement.textContent = message;
+  toast.hidden = false;
+
+  clearTimeout(showAdminTaskToast.hideTimer);
+
+  if (!options.persistent) {
+    showAdminTaskToast.hideTimer = setTimeout(() => {
+      toast.hidden = true;
+    }, options.duration || 4500);
+  }
+}
+
+function startGalleryUploadFeedback(event) {
+  const form = event.currentTarget;
+
+  if (!form.checkValidity()) return;
+
+  if (form.dataset.uploadBusy === "true") {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
+
+  form.dataset.uploadBusy = "true";
+  activeGalleryUploadForm = form;
+
+  const button = form.querySelector('button[type="submit"]');
+
+  if (button) {
+    button.dataset.originalText ||= button.textContent.trim();
+    button.disabled = true;
+    button.textContent = "Uploading…";
+  }
+
+  clearGalleryProgressTimers();
+
+  showAdminTaskToast(
+    "Reviewing the selected image…",
+    "loading",
+    { persistent: true }
+  );
+
+  galleryProgressTimers.push(
+    setTimeout(() => {
+      if (activeGalleryUploadForm === form) {
+        showAdminTaskToast(
+          "Uploading the image to the website…",
+          "loading",
+          { persistent: true }
+        );
+      }
+    }, 500)
+  );
+
+  galleryProgressTimers.push(
+    setTimeout(() => {
+      if (activeGalleryUploadForm === form) {
+        showAdminTaskToast(
+          "Finalising the gallery update…",
+          "loading",
+          { persistent: true }
+        );
+      }
+    }, 2500)
+  );
+}
+
+function finishGalleryUploadFeedback(message, type) {
+  if (!activeGalleryUploadForm) return;
+
+  clearGalleryProgressTimers();
+
+  const form = activeGalleryUploadForm;
+  const button = form.querySelector('button[type="submit"]');
+
+  delete form.dataset.uploadBusy;
+
+  if (button) {
+    button.disabled = false;
+    button.textContent =
+      button.dataset.originalText || "Save image";
+  }
+
+  activeGalleryUploadForm = null;
+
+  showAdminTaskToast(
+    message,
+    type === "error" ? "error" : "success"
+  );
+}
+
 function notice(message, type = "success") {
   const element = document.getElementById("adminNotice");
   element.textContent = message;
   element.className = `admin-notice show ${type}`;
   clearTimeout(notice.timer);
-  notice.timer = setTimeout(() => element.classList.remove("show"), 5000);
+  notice.timer = setTimeout(
+    () => element.classList.remove("show"),
+    5000
+  );
+
+  if (activeGalleryUploadForm) {
+    finishGalleryUploadFeedback(message, type);
+  }
 }
 
 function esc(value = "") {
@@ -71,7 +220,17 @@ async function initAdmin() {
     if (groupSlugInput.dataset.manuallyEdited !== "true") groupSlugInput.value = slugify(groupNameInput.value);
   });
   groupSlugInput.addEventListener("input", () => { groupSlugInput.dataset.manuallyEdited = "true"; });
-  document.getElementById("galleryForm").addEventListener("submit", saveGallery);
+  document
+    .getElementById("galleryForm")
+    .addEventListener(
+      "submit",
+      startGalleryUploadFeedback,
+      true
+    );
+
+  document
+    .getElementById("galleryForm")
+    .addEventListener("submit", saveGallery);
   document.getElementById("resetGalleryForm").addEventListener("click", resetGalleryForm);
   document.getElementById("settingsForm").addEventListener("submit", saveSettings);
 }
