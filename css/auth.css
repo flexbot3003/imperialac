@@ -1,0 +1,127 @@
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  background: #f5f7fb;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.auth-card {
+  width: min(100%, 460px);
+  padding: 32px;
+  background: #ffffff;
+  border: 1px solid #dfe5ef;
+  border-radius: 18px;
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.1);
+}
+
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.auth-brand img {
+  width: 42px;
+  height: 42px;
+}
+
+.auth-eyebrow {
+  margin: 26px 0 8px;
+  color: #2357a6;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.8rem, 6vw, 2.55rem);
+  line-height: 1.05;
+}
+
+.auth-copy {
+  margin: 0 0 24px;
+  color: #526072;
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-field {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.auth-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid #b9c3d1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+}
+
+.auth-field input:focus {
+  outline: 3px solid rgba(35, 87, 166, 0.18);
+  border-color: #2357a6;
+}
+
+.auth-button {
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #2357a6;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.auth-notice {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: #eef4ff;
+  color: #163d78;
+  line-height: 1.45;
+}
+
+.auth-notice.error {
+  background: #fff0f0;
+  color: #9d2020;
+}
+
+.auth-notice.success {
+  background: #ecf9f0;
+  color: #176233;
+}
+
+.auth-back {
+  margin: 22px 0 0;
+  text-align: center;
+}
+
+.auth-back a {
+  color: #2357a6;
+  font-weight: 700;
+}
