@@ -504,6 +504,90 @@ async function deleteNews(id) {
   await loadNews();
 }
 
+async function loadGallery() {
+  const { data, error } = await client()
+    .from("gallery_items")
+    .select("*")
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.error("Gallery loading failed:", error);
+    notice(`Gallery could not be loaded: ${error.message}`, "error");
+    return;
+  }
+
+  currentGallery = data || [];
+
+  const list = document.getElementById("galleryAdminList");
+
+  if (!list) {
+    console.error("galleryAdminList element was not found.");
+    return;
+  }
+
+  list.innerHTML = currentGallery.length
+    ? currentGallery.map(item => `
+        <article class="admin-list-card">
+          ${
+            item.image_url
+              ? `<img
+                  src="${esc(item.image_url)}"
+                  alt="${esc(item.title || "Gallery image")}"
+                  loading="lazy"
+                  style="width:100%;max-height:220px;object-fit:cover;border-radius:0.5rem;margin-bottom:0.85rem;"
+                >`
+              : ""
+          }
+
+          <div class="admin-list-meta">
+            <span>${esc(item.category || "Club")}</span>
+            <span>
+              Order ${Number(item.display_order || 0)}
+              ${item.published ? "" : " • Hidden"}
+            </span>
+          </div>
+
+          <h3>${esc(item.title || "Untitled gallery image")}</h3>
+
+          <div class="admin-list-actions">
+            <button
+              type="button"
+              data-edit-gallery="${esc(item.id)}"
+            >
+              Edit
+            </button>
+
+            <button
+              class="danger-text"
+              type="button"
+              data-delete-gallery="${esc(item.id)}"
+            >
+              Delete
+            </button>
+          </div>
+        </article>
+      `).join("")
+    : '<div class="admin-empty">No gallery items yet.</div>';
+
+  list
+    .querySelectorAll("[data-edit-gallery]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editGallery(button.dataset.editGallery);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-gallery]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deleteGallery(button.dataset.deleteGallery);
+      });
+    });
+
+  updateOverview();
+}
+
 function editGallery(id) {
   const item = currentGallery.find(entry => entry.id === id);
   if (!item) return;
