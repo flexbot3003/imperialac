@@ -3322,6 +3322,7 @@ async function loadSettings() {
   document.getElementById("showStandings").checked = settings.show_standings ?? true;
   document.getElementById("showNews").checked = settings.show_news ?? false;
   document.getElementById("showGallery").checked = settings.show_gallery ?? false;
+  document.getElementById("showPlayers").checked = settings.show_players ?? false;
 }
 
 async function saveSettings(event) {
@@ -3329,7 +3330,8 @@ async function saveSettings(event) {
   const rows = [
     { key: "show_standings", value: document.getElementById("showStandings").checked, updated_at: new Date().toISOString() },
     { key: "show_news", value: document.getElementById("showNews").checked, updated_at: new Date().toISOString() },
-    { key: "show_gallery", value: document.getElementById("showGallery").checked, updated_at: new Date().toISOString() }
+    { key: "show_gallery", value: document.getElementById("showGallery").checked, updated_at: new Date().toISOString() },
+    { key: "show_players", value: document.getElementById("showPlayers").checked, updated_at: new Date().toISOString() }
   ];
   const { error } = await client().from("site_settings").upsert(rows, { onConflict: "key" });
   if (error) return notice(error.message, "error");

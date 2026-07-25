@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260725-40" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js?v=20260725-40"></script></head><body class="admin-body">
+<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260725-49" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js?v=20260725-43"></script><script src="js/admin-players.js?v=20260725-5" defer></script></head><body class="admin-body">
 <header class="admin-topbar admin-topbar--logged-out" id="adminTopbar"><a class="brand" href="index.html"><img alt="Imperial AC crest" src="assets/logo-mark.svg"/><span><strong>Imperial AC</strong><small>Club Dashboard</small></span></a><div class="admin-topbar-actions" hidden="" id="adminTopbarActions"><a href="index.html">View website</a><button class="button button--line" id="logoutButton" type="button">Sign out</button></div></header>
 <main>
 <section class="setup-card" id="configRequired"><p class="eyebrow">Setup required</p><h1>Connect the live content database.</h1><p>Open CMS-SETUP.md, create the Supabase project, run the included SQL, and paste the project URL and publishable key into js/cms-config.js.</p><code>js/cms-config.js</code></section>
 <div hidden="" id="authArea"><section class="login-card" id="loginPanel"><p class="eyebrow">Private access</p><h1>Club dashboard login</h1><p>Use the administrator account created in Supabase Authentication.</p><form id="loginForm"><div class="field"><label for="loginEmail">Email</label><input autocomplete="email" id="loginEmail" name="email" required="" type="email"/></div><div class="field"><label for="loginPassword">Password</label><input autocomplete="current-password" id="loginPassword" name="password" required="" type="password"/></div><button class="button button--blue" type="submit">Sign in</button></form></section>
-<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="teams" type="button">Teams &amp; Logos</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="partners" type="button">Partners</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
-<section class="admin-panel" data-admin-panel="overview"><div class="admin-section-head"><div><h2>Overview</h2><p>A quick view of the content currently in the CMS.</p></div></div><div class="admin-stat-grid"><div class="admin-stat"><span>Teams in standings</span><strong id="countStandings">0</strong></div><div class="admin-stat"><span>Fixtures and results</span><strong id="countFixtures">0</strong></div><div class="admin-stat"><span>News posts</span><strong id="countNews">0</strong></div><div class="admin-stat"><span>News groups</span><strong id="countNewsGroups">0</strong></div><div class="admin-stat"><span>Gallery items</span><strong id="countGallery">0</strong></div></div></section>
+<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="teams" type="button">Teams &amp; Logos</button><button data-admin-tab="players" type="button">Squad &amp; Legacy</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="partners" type="button">Partners</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
+<section class="admin-panel" data-admin-panel="overview"><div class="admin-section-head"><div><h2>Overview</h2><p>A quick view of the content currently in the CMS.</p></div></div><div class="admin-stat-grid"><div class="admin-stat"><span>Teams in standings</span><strong id="countStandings">0</strong></div><div class="admin-stat"><span>Fixtures and results</span><strong id="countFixtures">0</strong></div><div class="admin-stat"><span>News posts</span><strong id="countNews">0</strong></div><div class="admin-stat"><span>News groups</span><strong id="countNewsGroups">0</strong></div><div class="admin-stat"><span>Gallery items</span><strong id="countGallery">0</strong></div><div class="admin-stat"><span>Published players</span><strong id="countPlayers">0</strong></div></div></section>
 <section class="admin-panel" data-admin-panel="standings" hidden=""><div class="admin-section-head"><div><h2>Standings editor</h2><p>Choose registered teams from Teams & Logos. Team names can only be edited from the team directory.</p></div><button class="button button--line" id="addStandingRow" type="button">Add team</button></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th></th></tr></thead><tbody id="standingEditorBody"></tbody></table></div><div class="admin-actions"><button class="primary" id="saveStandings" type="button">Save standings live</button></div></div></section>
 <section class="admin-panel" data-admin-panel="teams" hidden="">
   <form class="admin-card" id="teamForm">
@@ -283,7 +283,346 @@
 </div>
 <div class="admin-list" id="newsAdminList"></div>
 </section>
-<section class="admin-panel" data-admin-panel="gallery" hidden=""><form class="admin-card" id="galleryForm"><input id="galleryId" name="id" type="hidden"/><div class="admin-card-header"><h2>Add or edit gallery image</h2></div><div class="admin-form-grid"><div class="field"><label>Title</label><input name="title"/></div><div class="field"><label>Category</label><input name="category" value="Club"/></div><div class="field"><label>Upload image</label><input accept="image/*" name="image_file" type="file"/></div><div class="field"><label>Display order</label><input name="display_order" type="number" value="0"/></div><div class="field field--wide"><label>Or image URL</label><input name="image_url" type="url"/></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish now</label></div><div class="admin-actions"><button class="primary" type="submit">Save image</button><button id="resetGalleryForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Gallery items</h2></div><div class="admin-list" id="galleryAdminList"></div></section>
+<section
+  class="admin-panel"
+  data-admin-panel="players"
+  hidden=""
+>
+  <form class="admin-card" id="playerForm">
+    <input id="playerId" name="id" type="hidden"/>
+
+    <div class="admin-card-header">
+      <div>
+        <h2>Add or edit player</h2>
+        <p>
+          Manage current squad members and Imperial AC legacy
+          players.
+        </p>
+      </div>
+    </div>
+
+    <div class="player-admin-layout">
+      <div class="player-photo-admin">
+        <div
+          class="player-photo-preview"
+          id="playerPhotoPreview"
+        >
+          <span>Player photo</span>
+        </div>
+
+        <div class="field">
+          <label>Upload player photo</label>
+          <input
+            accept="image/*"
+            name="photo_file"
+            type="file"
+          />
+        </div>
+
+        <div class="field">
+          <label>Or photo URL</label>
+          <input name="photo_url" type="url"/>
+        </div>
+
+        <div class="team-logo-adjustments">
+          <div class="team-logo-adjustments__heading">
+            <strong>Photo positioning</strong>
+            <small>
+              Adjust the image inside the player card.
+            </small>
+          </div>
+
+          <div class="team-logo-adjustment-grid">
+            <label class="team-logo-adjustment">
+              <span>
+                Zoom
+                <output id="playerPhotoScaleOutput">
+                  100%
+                </output>
+              </span>
+
+              <input
+                id="playerPhotoScale"
+                max="250"
+                min="50"
+                name="photo_scale"
+                type="range"
+                value="100"
+              />
+            </label>
+
+            <label class="team-logo-adjustment">
+              <span>
+                Horizontal
+                <output id="playerPhotoOffsetXOutput">
+                  0
+                </output>
+              </span>
+
+              <input
+                id="playerPhotoOffsetX"
+                max="40"
+                min="-40"
+                name="photo_offset_x"
+                type="range"
+                value="0"
+              />
+            </label>
+
+            <label class="team-logo-adjustment">
+              <span>
+                Vertical
+                <output id="playerPhotoOffsetYOutput">
+                  0
+                </output>
+              </span>
+
+              <input
+                id="playerPhotoOffsetY"
+                max="40"
+                min="-40"
+                name="photo_offset_y"
+                type="range"
+                value="0"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-form-grid player-admin-fields">
+        <div class="field">
+          <label>Full name</label>
+          <input
+            name="full_name"
+            required
+            type="text"
+          />
+        </div>
+
+        <div class="field">
+          <label>Nickname</label>
+          <input name="nickname" type="text"/>
+        </div>
+
+        <div class="field">
+          <label>Profile URL slug</label>
+          <input
+            name="slug"
+            placeholder="tefo-myfriend"
+            required
+            type="text"
+          />
+        </div>
+
+        <div class="field">
+          <label>Position</label>
+          <select name="position" required>
+            <option value="">Choose position</option>
+            <option value="Goalkeeper">Goalkeeper</option>
+            <option value="Right Back">Right Back</option>
+            <option value="Centre Back">Centre Back</option>
+            <option value="Left Back">Left Back</option>
+            <option value="Defensive Midfielder">
+              Defensive Midfielder
+            </option>
+            <option value="Central Midfielder">
+              Central Midfielder
+            </option>
+            <option value="Attacking Midfielder">
+              Attacking Midfielder
+            </option>
+            <option value="Right Winger">Right Winger</option>
+            <option value="Left Winger">Left Winger</option>
+            <option value="Striker">Striker</option>
+            <option value="Utility Player">
+              Utility Player
+            </option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Shirt number</label>
+          <input
+            max="99"
+            min="1"
+            name="shirt_number"
+            type="number"
+          />
+        </div>
+
+        <div class="field">
+          <label>Player section</label>
+          <select name="profile_section">
+            <option value="first_team">
+              Current squad
+            </option>
+            <option value="legacy">
+              Legacy players
+            </option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Player status</label>
+          <select name="player_status">
+            <option value="active">Active</option>
+            <option value="injured">Injured</option>
+            <option value="unavailable">Unavailable</option>
+            <option value="suspended">Suspended</option>
+            <option value="released">Released</option>
+            <option value="retired">Retired</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Legacy title</label>
+          <input
+            name="legacy_title"
+            placeholder="Founding captain"
+            type="text"
+          />
+        </div>
+
+        <div class="field">
+          <label>Joined year</label>
+          <input
+            max="2100"
+            min="2023"
+            name="joined_year"
+            type="number"
+          />
+        </div>
+
+        <div class="field">
+          <label>Departed year</label>
+          <input
+            max="2100"
+            min="2023"
+            name="departed_year"
+            type="number"
+          />
+        </div>
+
+        <div class="field">
+          <label>Appearances</label>
+          <input
+            min="0"
+            name="appearances"
+            type="number"
+            value="0"
+          />
+        </div>
+
+        <div class="field">
+          <label>Goals</label>
+          <input
+            min="0"
+            name="goals"
+            type="number"
+            value="0"
+          />
+        </div>
+
+        <div class="field">
+          <label>Assists</label>
+          <input
+            min="0"
+            name="assists"
+            type="number"
+            value="0"
+          />
+        </div>
+
+        <div class="field">
+          <label>Clean sheets</label>
+          <input
+            min="0"
+            name="clean_sheets"
+            type="number"
+            value="0"
+          />
+        </div>
+
+        <div class="field">
+          <label>Display order</label>
+          <input
+            min="0"
+            name="display_order"
+            type="number"
+            value="0"
+          />
+        </div>
+
+        <div class="field field--wide">
+          <label>Player biography</label>
+          <textarea
+            name="biography"
+            placeholder="Write a short player profile."
+            rows="6"
+          ></textarea>
+        </div>
+
+        <label class="checkbox-row">
+          <input name="is_captain" type="checkbox"/>
+          Captain
+        </label>
+
+        <label class="checkbox-row">
+          <input name="featured" type="checkbox"/>
+          Featured player
+        </label>
+
+        <label class="checkbox-row">
+          <input
+            checked=""
+            name="published"
+            type="checkbox"
+          />
+          Publish player
+        </label>
+      </div>
+    </div>
+
+    <div class="admin-actions">
+      <button class="primary" type="submit">
+        Save player
+      </button>
+
+      <button id="resetPlayerForm" type="button">
+        Clear form
+      </button>
+    </div>
+  </form>
+
+  <div class="admin-section-head">
+    <div>
+      <h2>Squad and legacy directory</h2>
+      <p>
+        Current squad members and historic Imperial AC players.
+      </p>
+    </div>
+  
+<div class="player-directory-toolbar">
+  <label>
+    <span>Filter by position</span>
+
+    <select id="playerPositionFilter">
+      <option value="all">All positions</option>
+    </select>
+  </label>
+
+  <span id="playerDirectoryCount">
+    0 players
+  </span>
+</div>
+</div>
+
+<div
+  class="player-directory-grid"
+  id="playerAdminList"
+></div>
+</section><section class="admin-panel" data-admin-panel="gallery" hidden=""><form class="admin-card" id="galleryForm"><input id="galleryId" name="id" type="hidden"/><div class="admin-card-header"><h2>Add or edit gallery image</h2></div><div class="admin-form-grid"><div class="field"><label>Title</label><input name="title"/></div><div class="field"><label>Category</label><input name="category" value="Club"/></div><div class="field"><label>Upload image</label><input accept="image/*" name="image_file" type="file"/></div><div class="field"><label>Display order</label><input name="display_order" type="number" value="0"/></div><div class="field field--wide"><label>Or image URL</label><input name="image_url" type="url"/></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish now</label></div><div class="admin-actions"><button class="primary" type="submit">Save image</button><button id="resetGalleryForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Gallery items</h2></div><div class="admin-list" id="galleryAdminList"></div></section>
 <section class="admin-panel" data-admin-panel="partners" hidden="">
   <form class="admin-card" id="partnerForm">
     <input id="partnerId" name="id" type="hidden">
@@ -449,7 +788,7 @@
       Open this section to load partners.
     </div>
   </div>
-</section><section class="admin-panel" data-admin-panel="visibility" hidden=""><form class="admin-card" id="settingsForm"><div class="admin-card-header"><h2>Public page visibility</h2><p>Fixtures remain visible and show an awaiting-confirmation message when empty. News and Gallery stay hidden until you turn them on.</p></div><div class="visibility-grid"><label class="visibility-option"><span><strong>Standings</strong><span>Show the live MPL table in navigation.</span></span><span class="switch"><input id="showStandings" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>News</strong><span>Show the News page in navigation and on the homepage.</span></span><span class="switch"><input id="showNews" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Gallery</strong><span>Show the Gallery page in navigation.</span></span><span class="switch"><input id="showGallery" type="checkbox"/><i></i></span></label></div><div class="admin-actions"><button class="primary" type="submit">Save visibility</button></div></form></section>
+</section><section class="admin-panel" data-admin-panel="visibility" hidden=""><form class="admin-card" id="settingsForm"><div class="admin-card-header"><h2>Public page visibility</h2><p>Fixtures remain visible and show an awaiting-confirmation message when empty. News, Gallery and Squad stay hidden until you turn them on.</p></div><div class="visibility-grid"><label class="visibility-option"><span><strong>Standings</strong><span>Show the live MPL table in navigation.</span></span><span class="switch"><input id="showStandings" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>News</strong><span>Show the News page in navigation and on the homepage.</span></span><span class="switch"><input id="showNews" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Gallery</strong><span>Show the Gallery page in navigation.</span></span><span class="switch"><input id="showGallery" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Squad</strong><span>Show the Current Squad and Legacy Players page in navigation.</span></span><span class="switch"><input id="showPlayers" type="checkbox"/><i></i></span></label></div><div class="admin-actions"><button class="primary" type="submit">Save visibility</button></div></form></section>
 <section class="admin-panel" data-admin-panel="compliance" hidden="">
 <div class="admin-section-head">
 <div>

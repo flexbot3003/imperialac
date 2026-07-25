@@ -8,6 +8,7 @@ const socialLinks = {
 const defaultSettings = {
   show_news: false,
   show_gallery: false,
+  show_players: false,
   show_standings: true
 };
 
@@ -71,6 +72,7 @@ function navItems() {
     ["Fixtures", "fixtures.html", "fixtures"]
   ];
   if (siteSettings.show_standings) items.push(["Standings", "standings.html", "standings"]);
+  if (siteSettings.show_players) items.push(["Squad", "squad.html", "squad"]);
   if (siteSettings.show_news) items.push(["News", "news.html", "news"]);
   if (siteSettings.show_gallery) items.push(["Gallery", "gallery.html", "gallery"]);
   items.push(["Partners", "partners.html", "partners"]);
@@ -118,6 +120,7 @@ function renderFooter() {
   if (!mount) return;
   const dynamic = [];
   if (siteSettings.show_standings) dynamic.push('<a href="standings.html">Standings</a>');
+  if (siteSettings.show_players) dynamic.push('<a href="squad.html">Squad</a>');
   if (siteSettings.show_news) dynamic.push('<a href="news.html">News</a>');
   if (siteSettings.show_gallery) dynamic.push('<a href="gallery.html">Gallery</a>');
 
