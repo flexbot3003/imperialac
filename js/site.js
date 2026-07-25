@@ -188,21 +188,191 @@ function emptyState(title, copy) {
   return `<div class="empty-state"><span class="empty-mark">IAC</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(copy)}</p></div>`;
 }
 
+function normaliseStandingTeamName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function standingTeamCode(teamName, team = null) {
+  const savedCode = String(team?.short_code || "")
+    .trim()
+    .toUpperCase();
+
+  return savedCode || initials(teamName);
+}
+
+function standingTeamBadge(teamName, team = null) {
+  const code = escapeHtml(
+    standingTeamCode(teamName, team)
+  );
+
+  if (!team?.logo_url) {
+    return `
+      <span class="table-crest">
+        ${code}
+      </span>
+    `;
+  }
+
+  const scale = Math.min(
+    250,
+    Math.max(50, Number(team.logo_scale || 100))
+  );
+
+  const offsetX = Math.min(
+    40,
+    Math.max(-40, Number(team.logo_offset_x || 0))
+  );
+
+  const offsetY = Math.min(
+    40,
+    Math.max(-40, Number(team.logo_offset_y || 0))
+  );
+
+  return `
+    <span class="table-crest table-crest--logo">
+      <img
+        src="${escapeHtml(team.logo_url)}"
+        alt="${escapeHtml(team.team_name || teamName)} crest"
+        loading="lazy"
+        data-standing-team-logo
+        style="
+          transform:
+            translate(${offsetX}%, ${offsetY}%)
+            scale(${scale / 100});
+        "
+      >
+
+      <span
+        class="table-crest__fallback"
+        hidden
+      >
+        ${code}
+      </span>
+    </span>
+  `;
+}
+
+function activateStandingLogoFallbacks(root = document) {
+  root
+    .querySelectorAll("[data-standing-team-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          const fallback = image.nextElementSibling;
+
+          if (fallback) {
+            fallback.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+}
+
 async function renderStandings() {
   const mount = document.getElementById("standingsBody");
+
   if (!mount) return;
+
   let rows = fallbackStandings;
+  let teams = [];
+
   const client = getCmsClient();
+
   if (client) {
-    const { data, error } = await client.from("standings").select("*").order("position", { ascending: true });
-    if (!error && data?.length) rows = data;
+    const [standingsResponse, teamsResponse] =
+      await Promise.all([
+        client
+          .from("standings")
+          .select("*")
+          .order("position", { ascending: true }),
+
+        client
+          .from("teams")
+          .select(
+            "id,team_name,short_code,logo_url," +
+            "logo_scale,logo_offset_x,logo_offset_y," +
+            "is_home_club,published"
+          )
+          .eq("published", true)
+      ]);
+
+    if (
+      !standingsResponse.error &&
+      standingsResponse.data?.length
+    ) {
+      rows = standingsResponse.data;
+    }
+
+    if (!teamsResponse.error) {
+      teams = teamsResponse.data || [];
+    } else {
+      console.warn(
+        "Team crests could not be loaded:",
+        teamsResponse.error
+      );
+    }
   }
-  mount.innerHTML = rows.map(row => `
-    <tr class="${String(row.team_name).toLowerCase().includes("imperial") ? "is-imperial" : ""}">
-      <td>${row.position}</td><td class="club-cell"><span class="table-crest">${initials(row.team_name)}</span>${escapeHtml(row.team_name)}</td>
-      <td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td>
-      <td>${row.goals_for}</td><td>${row.goals_against}</td><td>${row.goal_difference}</td><td><strong>${row.points}</strong></td>
-    </tr>`).join("");
+
+  const teamsById = new Map(
+    teams.map(team => [
+      String(team.id),
+      team
+    ])
+  );
+
+  const teamsByName = new Map(
+    teams.map(team => [
+      normaliseStandingTeamName(team.team_name),
+      team
+    ])
+  );
+
+  mount.innerHTML = rows.map(row => {
+    const team =
+      teamsById.get(String(row.team_id || "")) ||
+      teamsByName.get(
+        normaliseStandingTeamName(row.team_name)
+      ) ||
+      null;
+
+    const isImperial =
+      Boolean(team?.is_home_club) ||
+      String(row.team_name)
+        .toLowerCase()
+        .includes("imperial");
+
+    return `
+      <tr class="${isImperial ? "is-imperial" : ""}">
+        <td>${row.position}</td>
+
+        <td class="club-cell">
+          ${standingTeamBadge(row.team_name, team)}
+          ${escapeHtml(row.team_name)}
+        </td>
+
+        <td>${row.played}</td>
+        <td>${row.won}</td>
+        <td>${row.drawn}</td>
+        <td>${row.lost}</td>
+        <td>${row.goals_for}</td>
+        <td>${row.goals_against}</td>
+        <td>${row.goal_difference}</td>
+
+        <td>
+          <strong>${row.points}</strong>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  activateStandingLogoFallbacks(mount);
 }
 
 function slugifyNewsGroup(value = "") {
