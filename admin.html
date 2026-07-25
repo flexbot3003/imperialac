@@ -1,13 +1,177 @@
 <!DOCTYPE html>
-<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260722-4" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js"></script></head><body class="admin-body">
-<header class="admin-topbar"><a class="brand" href="index.html"><img alt="Imperial AC crest" src="assets/logo-mark.svg"/><span><strong>Imperial AC</strong><small>Club Dashboard</small></span></a><div class="admin-topbar-actions"><a href="index.html">View website</a><button class="button button--line" id="logoutButton" type="button">Sign out</button></div></header>
+<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260725-18" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js?v=20260722-12"></script></head><body class="admin-body">
+<header class="admin-topbar admin-topbar--logged-out" id="adminTopbar"><a class="brand" href="index.html"><img alt="Imperial AC crest" src="assets/logo-mark.svg"/><span><strong>Imperial AC</strong><small>Club Dashboard</small></span></a><div class="admin-topbar-actions" hidden="" id="adminTopbarActions"><a href="index.html">View website</a><button class="button button--line" id="logoutButton" type="button">Sign out</button></div></header>
 <main>
 <section class="setup-card" id="configRequired"><p class="eyebrow">Setup required</p><h1>Connect the live content database.</h1><p>Open CMS-SETUP.md, create the Supabase project, run the included SQL, and paste the project URL and publishable key into js/cms-config.js.</p><code>js/cms-config.js</code></section>
 <div hidden="" id="authArea"><section class="login-card" id="loginPanel"><p class="eyebrow">Private access</p><h1>Club dashboard login</h1><p>Use the administrator account created in Supabase Authentication.</p><form id="loginForm"><div class="field"><label for="loginEmail">Email</label><input autocomplete="email" id="loginEmail" name="email" required="" type="email"/></div><div class="field"><label for="loginPassword">Password</label><input autocomplete="current-password" id="loginPassword" name="password" required="" type="password"/></div><button class="button button--blue" type="submit">Sign in</button></form></section>
-<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
+<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="teams" type="button">Teams &amp; Logos</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
 <section class="admin-panel" data-admin-panel="overview"><div class="admin-section-head"><div><h2>Overview</h2><p>A quick view of the content currently in the CMS.</p></div></div><div class="admin-stat-grid"><div class="admin-stat"><span>Teams in standings</span><strong id="countStandings">0</strong></div><div class="admin-stat"><span>Fixtures and results</span><strong id="countFixtures">0</strong></div><div class="admin-stat"><span>News posts</span><strong id="countNews">0</strong></div><div class="admin-stat"><span>News groups</span><strong id="countNewsGroups">0</strong></div><div class="admin-stat"><span>Gallery items</span><strong id="countGallery">0</strong></div></div></section>
-<section class="admin-panel" data-admin-panel="standings" hidden=""><div class="admin-section-head"><div><h2>Standings editor</h2><p>Points and goal difference calculate automatically.</p></div><button class="button button--line" id="addStandingRow" type="button">Add team</button></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th></th></tr></thead><tbody id="standingEditorBody"></tbody></table></div><div class="admin-actions"><button class="primary" id="saveStandings" type="button">Save standings live</button></div></div></section>
-<section class="admin-panel" data-admin-panel="fixtures" hidden=""><form class="admin-card" id="fixtureForm"><input name="id" type="hidden"/><div class="admin-card-header"><h2>Create or edit fixture</h2><p>Use Result only after the final score is confirmed.</p></div><div class="admin-form-grid"><div class="field"><label>Competition</label><input name="competition" required="" value="MPL"/></div><div class="field"><label>Status</label><select name="status"><option value="upcoming">Upcoming</option><option value="result">Result</option><option value="postponed">Postponed</option><option value="cancelled">Cancelled</option></select></div><div class="field"><label>Match date</label><input name="match_date" type="date"/></div><div class="field"><label>Kick-off time</label><input name="kickoff_time" type="time"/></div><div class="field"><label>Home team</label><input name="home_team" required=""/></div><div class="field"><label>Away team</label><input name="away_team" required=""/></div><div class="field"><label>Home score</label><input min="0" name="home_score" type="number"/></div><div class="field"><label>Away score</label><input min="0" name="away_score" type="number"/></div><div class="field field--wide"><label>Venue</label><input name="venue"/></div><div class="field field--wide"><label>Notes</label><textarea name="notes"></textarea></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish on the website</label></div><div class="admin-actions"><button class="primary" type="submit">Save fixture</button><button id="resetFixtureForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Existing fixtures</h2></div><div class="admin-list" id="fixtureAdminList"></div></section>
+<section class="admin-panel" data-admin-panel="standings" hidden=""><div class="admin-section-head"><div><h2>Standings editor</h2><p>Choose registered teams from Teams & Logos. Team names can only be edited from the team directory.</p></div><button class="button button--line" id="addStandingRow" type="button">Add team</button></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th></th></tr></thead><tbody id="standingEditorBody"></tbody></table></div><div class="admin-actions"><button class="primary" id="saveStandings" type="button">Save standings live</button></div></div></section>
+<section class="admin-panel" data-admin-panel="teams" hidden="">
+  <form class="admin-card" id="teamForm">
+    <input id="teamId" name="id" type="hidden">
+    <input id="teamExistingLogo" name="existing_logo_url" type="hidden">
+
+    <div class="admin-card-header">
+      <h2>Add or edit a team</h2>
+      <p>
+        Upload rival badges here. Teams without a badge will display
+        their short code or automatic initials.
+      </p>
+    </div>
+
+    <div class="team-editor-layout">
+      <div class="team-logo-preview" id="teamLogoPreview">
+        <span>LOGO</span>
+      </div>
+
+      <div class="admin-form-grid">
+        <div class="field field--wide">
+          <label>Team name</label>
+          <input
+            maxlength="100"
+            name="team_name"
+            placeholder="Mamelodi United"
+            required
+          >
+        </div>
+
+        <div class="field">
+          <label>Short code</label>
+          <input
+            maxlength="5"
+            name="short_code"
+            placeholder="MU"
+          >
+          <small>Leave empty to generate initials automatically.</small>
+        </div>
+
+        <div class="field">
+          <label>Upload team badge</label>
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            name="logo_file"
+            type="file"
+          >
+          <small>PNG, JPG or WebP. Maximum 2 MB.</small>
+        </div>
+
+        <div class="field field--wide team-logo-adjustments">
+          <div class="team-logo-adjustments__heading">
+            <div>
+              <strong>Adjust logo appearance</strong>
+              <small>
+                Resize and reposition the badge inside its frame.
+              </small>
+            </div>
+
+            <button
+              class="button button--line"
+              id="resetTeamLogoAdjustments"
+              type="button"
+            >
+              Reset adjustments
+            </button>
+          </div>
+
+          <div class="team-logo-adjustment-grid">
+            <div class="team-logo-adjustment">
+              <label for="teamLogoScale">
+                Logo size
+                <output
+                  for="teamLogoScale"
+                  id="teamLogoScaleValue"
+                >
+                  100%
+                </output>
+              </label>
+
+              <input
+                id="teamLogoScale"
+                max="250"
+                min="50"
+                name="logo_scale"
+                step="1"
+                type="range"
+                value="100"
+              >
+            </div>
+
+            <div class="team-logo-adjustment">
+              <label for="teamLogoOffsetX">
+                Move left or right
+                <output
+                  for="teamLogoOffsetX"
+                  id="teamLogoOffsetXValue"
+                >
+                  0%
+                </output>
+              </label>
+
+              <input
+                id="teamLogoOffsetX"
+                max="40"
+                min="-40"
+                name="logo_offset_x"
+                step="1"
+                type="range"
+                value="0"
+              >
+            </div>
+
+            <div class="team-logo-adjustment">
+              <label for="teamLogoOffsetY">
+                Move up or down
+                <output
+                  for="teamLogoOffsetY"
+                  id="teamLogoOffsetYValue"
+                >
+                  0%
+                </output>
+              </label>
+
+              <input
+                id="teamLogoOffsetY"
+                max="40"
+                min="-40"
+                name="logo_offset_y"
+                step="1"
+                type="range"
+                value="0"
+              >
+            </div>
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input name="is_home_club" type="checkbox">
+          This is Imperial Athletic Club
+        </label>
+
+        <label class="checkbox-row">
+          <input checked name="published" type="checkbox">
+          Show this team publicly
+        </label>
+      </div>
+    </div>
+
+    <div class="admin-actions">
+      <button class="primary" type="submit">Save team</button>
+      <button id="resetTeamForm" type="button">Clear form</button>
+    </div>
+  </form>
+
+  <div class="admin-section-head">
+    <div>
+      <h2>Teams and club badges</h2>
+      <p>Manage the teams used across fixtures and standings.</p>
+    </div>
+  </div>
+
+  <div class="admin-list" id="teamAdminList">
+    <div class="admin-empty">Open this section to load teams.</div>
+  </div>
+</section><section class="admin-panel" data-admin-panel="fixtures" hidden=""><form class="admin-card" id="fixtureForm"><input name="id" type="hidden"/><div class="admin-card-header"><h2>Create or edit fixture</h2><p>Use Result only after the final score is confirmed.</p></div><div class="admin-form-grid"><div class="field"><label>Competition</label><input name="competition" required="" value="MPL"/></div><div class="field"><label>Status</label><select name="status"><option value="upcoming">Upcoming</option><option value="result">Result</option><option value="postponed">Postponed</option><option value="cancelled">Cancelled</option></select></div><div class="field"><label>Match date</label><input name="match_date" type="date"/></div><div class="field"><label>Kick-off time</label><input name="kickoff_time" type="time"/></div><div class="field"><label>Home team</label><input name="home_team" required=""/></div><div class="field"><label>Away team</label><input name="away_team" required=""/></div><div class="field"><label>Home score</label><input min="0" name="home_score" type="number"/></div><div class="field"><label>Away score</label><input min="0" name="away_score" type="number"/></div><div class="field field--wide"><label>Venue</label><input name="venue"/></div><div class="field field--wide"><label>Notes</label><textarea name="notes"></textarea></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish on the website</label></div><div class="admin-actions"><button class="primary" type="submit">Save fixture</button><button id="resetFixtureForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Existing fixtures</h2></div><div class="admin-list" id="fixtureAdminList"></div></section>
 <section class="admin-panel" data-admin-panel="news" hidden="">
 <div class="admin-section-head">
 <div>

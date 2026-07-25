@@ -853,3 +853,355 @@ button { cursor: pointer; }
     max-height: 180px !important;
   }
 }
+
+/* Centre the admin identity while the user is logged out */
+.admin-topbar.admin-topbar--logged-out {
+  justify-content: center;
+}
+
+.admin-topbar.admin-topbar--logged-out .brand {
+  margin-inline: auto;
+}
+
+.admin-topbar-actions[hidden] {
+  display: none !important;
+}
+
+/* Homepage photography */
+.homepage-photo {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.homepage-photo img {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  display: block;
+  object-fit: cover;
+}
+
+.home-hero-media.homepage-photo img {
+  object-position: center top;
+}
+
+.homepage-photo--training {
+  border-right: 1px solid var(--line);
+}
+
+.homepage-photo--training img {
+  object-position: center;
+}
+
+.homepage-photo--closing {
+  border-left: 1px solid var(--line);
+}
+
+.homepage-photo--closing img {
+  object-position: center;
+}
+
+@media (max-width: 860px) {
+  .homepage-photo {
+    min-height: 480px;
+  }
+
+  .homepage-photo--training,
+  .homepage-photo--closing {
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+/* Teams and club logos admin */
+.team-editor-layout {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.team-logo-preview,
+.team-admin-badge {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.team-logo-preview {
+  width: 160px;
+  height: 160px;
+}
+
+.team-logo-preview img,
+.team-admin-badge img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  padding: 12px;
+}
+
+.team-logo-preview span,
+.team-admin-badge span,
+.team-admin-badge--fallback {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+}
+
+#teamAdminList {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.team-admin-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.team-admin-card .team-admin-badge {
+  width: 82px;
+  height: 82px;
+}
+
+.team-admin-card__content {
+  min-width: 0;
+}
+
+.team-admin-card__content h3 {
+  overflow-wrap: anywhere;
+}
+
+.field small {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 680px) {
+  .team-editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .team-logo-preview {
+    width: 130px;
+    height: 130px;
+  }
+
+  #teamAdminList {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Team logo adjustment controls */
+.team-logo-adjustments {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.team-logo-adjustments__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.team-logo-adjustments__heading strong {
+  display: block;
+}
+
+.team-logo-adjustments__heading small {
+  max-width: 520px;
+}
+
+.team-logo-adjustment-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.team-logo-adjustment label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+  font-weight: 700;
+}
+
+.team-logo-adjustment output {
+  min-width: 3.5rem;
+  color: var(--blue);
+  text-align: right;
+}
+
+.team-logo-adjustment input[type="range"] {
+  width: 100%;
+  cursor: pointer;
+}
+
+.team-logo-preview img,
+.team-admin-badge img {
+  transform-origin: center;
+  transition: transform 150ms ease;
+  will-change: transform;
+}
+
+@media (max-width: 760px) {
+  .team-logo-adjustments__heading {
+    display: grid;
+  }
+
+  .team-logo-adjustment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Public team badges */
+.team-mark--logo {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+.team-mark--logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  padding: 0.3rem;
+  transform-origin: center;
+}
+
+.team-mark__fallback {
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.team-mark__fallback:not([hidden]) {
+  display: grid;
+}
+
+.team-mark--compact {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  font-size: 0.65rem;
+}
+
+.fixture-team-name {
+  min-width: 0;
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.fixture-team-name > span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.fixture-team-name--away {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+@media (max-width: 680px) {
+  .team-mark--compact {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .fixture-team-name {
+    gap: 0.45rem;
+  }
+}
+
+/* Live standings team crests */
+.table-crest--logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+  background: transparent !important;
+}
+
+.table-crest--logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+.table-crest__fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: var(--blue);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.table-crest__fallback[hidden] {
+  display: none;
+}
+
+/* Imperial blue public badge background */
+.table-crest,
+.table-crest--logo,
+.team-mark--logo {
+  background: var(--blue) !important;
+  color: #ffffff;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.table-crest--logo,
+.team-mark--logo {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.table-crest--logo img,
+.team-mark--logo img {
+  width: 78%;
+  height: 78%;
+  display: block;
+  object-fit: contain;
+  padding: 0;
+  transform-origin: center;
+}
+
+.table-crest__fallback,
+.team-mark__fallback {
+  background: var(--blue);
+  color: #ffffff;
+}
+/* End Imperial blue public badge background */

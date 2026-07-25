@@ -236,10 +236,30 @@ async function initAdmin() {
 }
 
 function setAuthState(session) {
-  document.getElementById("loginPanel").hidden = Boolean(session);
-  document.getElementById("dashboard").hidden = !session;
-  document.getElementById("loggedInEmail").textContent = session?.user?.email || "";
-  if (session) loadDashboard();
+  const isLoggedIn = Boolean(session);
+
+  document.getElementById("loginPanel").hidden = isLoggedIn;
+  document.getElementById("dashboard").hidden = !isLoggedIn;
+  document.getElementById("loggedInEmail").textContent =
+    session?.user?.email || "";
+
+  const topbar = document.getElementById("adminTopbar");
+  const topbarActions = document.getElementById("adminTopbarActions");
+
+  if (topbar) {
+    topbar.classList.toggle(
+      "admin-topbar--logged-out",
+      !isLoggedIn
+    );
+  }
+
+  if (topbarActions) {
+    topbarActions.hidden = !isLoggedIn;
+  }
+
+  if (isLoggedIn) {
+    loadDashboard();
+  }
 }
 
 async function login(event) {
@@ -269,27 +289,279 @@ function updateOverview() {
 }
 
 async function loadStandings() {
-  const { data, error } = await client().from("standings").select("*").order("position");
-  if (error) return notice(error.message, "error");
-  currentStandings = data || [];
+  const [teamsResponse, standingsResponse] =
+    await Promise.all([
+      client()
+        .from("teams")
+        .select("*")
+        .order("is_home_club", { ascending: false })
+        .order("team_name", { ascending: true }),
+
+      client()
+        .from("standings")
+        .select("*")
+        .order("position", { ascending: true })
+    ]);
+
+  if (teamsResponse.error) {
+    return notice(
+      `Teams could not be loaded: ${teamsResponse.error.message}`,
+      "error"
+    );
+  }
+
+  if (standingsResponse.error) {
+    return notice(
+      standingsResponse.error.message,
+      "error"
+    );
+  }
+
+  currentTeams = teamsResponse.data || [];
+  currentStandings = standingsResponse.data || [];
+
   renderStandingEditor();
   updateOverview();
+}
+
+function refreshStandingTeamOptions() {
+  const selects = [
+    ...document.querySelectorAll(
+      "#standingEditorBody select.team"
+    )
+  ];
+
+  const selectedTeamIds = selects
+    .map(select => select.value)
+    .filter(Boolean);
+
+  selects.forEach(select => {
+    [...select.options].forEach(option => {
+      if (!option.value) return;
+
+      const selectedElsewhere =
+        selectedTeamIds.includes(option.value) &&
+        option.value !== select.value;
+
+      option.disabled = selectedElsewhere;
+      option.hidden = selectedElsewhere;
+    });
+  });
 }
 
 function renderStandingEditor() {
   const body = document.getElementById("standingEditorBody");
   body.innerHTML = currentStandings.map(row => standingRow(row)).join("");
-  body.querySelectorAll("input").forEach(input => input.addEventListener("input", recalculateStandingRows));
-  body.querySelectorAll("[data-delete-standing]").forEach(button => button.addEventListener("click", () => deleteStanding(button)));
+  body
+    .querySelectorAll("input")
+    .forEach(input => {
+      input.addEventListener(
+        "input",
+        recalculateStandingRows
+      );
+    });
+
+  body
+    .querySelectorAll("select.team")
+    .forEach(select => {
+      select.addEventListener(
+        "change",
+        refreshStandingTeamOptions
+      );
+    });
+
+  body
+    .querySelectorAll("[data-delete-standing]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => deleteStanding(button)
+      );
+    });
+
   recalculateStandingRows();
+  refreshStandingTeamOptions();
+}
+
+function standingTeamOptions(row = {}) {
+  const selectedTeamId =
+    String(row.team_id || "");
+
+  const oldTeamName =
+    String(row.team_name || "").trim();
+
+  const registeredMatch = currentTeams.find(team => {
+    return (
+      String(team.id) === selectedTeamId ||
+      (
+        !selectedTeamId &&
+        oldTeamName &&
+        String(team.team_name)
+          .trim()
+          .toLowerCase() ===
+        oldTeamName.toLowerCase()
+      )
+    );
+  });
+
+  const effectiveSelectedId =
+    registeredMatch?.id || selectedTeamId;
+
+  const placeholderText = oldTeamName &&
+    !registeredMatch
+      ? `Select replacement for ${oldTeamName}`
+      : "Select team";
+
+  const options = currentTeams.map(team => {
+    const selected =
+      String(team.id) ===
+      String(effectiveSelectedId)
+        ? " selected"
+        : "";
+
+    const code = teamInitials(
+      team.team_name,
+      team.short_code
+    );
+
+    return `
+      <option
+        value="${esc(team.id)}"
+        ${selected}
+      >
+        ${esc(team.team_name)} (${esc(code)})
+      </option>
+    `;
+  });
+
+  return `
+    <option
+      value=""
+      ${effectiveSelectedId ? "" : "selected"}
+    >
+      ${esc(placeholderText)}
+    </option>
+
+    ${options.join("")}
+  `;
 }
 
 function standingRow(row = {}) {
-  return `<tr data-id="${esc(row.id || "")}"><td><input class="pos" type="number" min="1" value="${row.position ?? currentStandings.length + 1}"></td><td><input class="team" type="text" value="${esc(row.team_name || "New Team")}" required></td><td><input class="p" type="number" min="0" value="${row.played ?? 0}"></td><td><input class="w" type="number" min="0" value="${row.won ?? 0}"></td><td><input class="d" type="number" min="0" value="${row.drawn ?? 0}"></td><td><input class="l" type="number" min="0" value="${row.lost ?? 0}"></td><td><input class="gf" type="number" min="0" value="${row.goals_for ?? 0}"></td><td><input class="ga" type="number" min="0" value="${row.goals_against ?? 0}"></td><td class="gd">${row.goal_difference ?? 0}</td><td class="pts">${row.points ?? 0}</td><td><button class="icon-button danger" type="button" data-delete-standing aria-label="Delete team">×</button></td></tr>`;
+  return `
+    <tr data-id="${esc(row.id || "")}">
+      <td>
+        <input
+          class="pos"
+          type="number"
+          min="1"
+          value="${row.position ?? currentStandings.length + 1}"
+        >
+      </td>
+
+      <td>
+        <select class="team" required>
+          ${standingTeamOptions(row)}
+        </select>
+      </td>
+
+      <td>
+        <input
+          class="p"
+          type="number"
+          min="0"
+          value="${row.played ?? 0}"
+        >
+      </td>
+
+      <td>
+        <input
+          class="w"
+          type="number"
+          min="0"
+          value="${row.won ?? 0}"
+        >
+      </td>
+
+      <td>
+        <input
+          class="d"
+          type="number"
+          min="0"
+          value="${row.drawn ?? 0}"
+        >
+      </td>
+
+      <td>
+        <input
+          class="l"
+          type="number"
+          min="0"
+          value="${row.lost ?? 0}"
+        >
+      </td>
+
+      <td>
+        <input
+          class="gf"
+          type="number"
+          min="0"
+          value="${row.goals_for ?? 0}"
+        >
+      </td>
+
+      <td>
+        <input
+          class="ga"
+          type="number"
+          min="0"
+          value="${row.goals_against ?? 0}"
+        >
+      </td>
+
+      <td class="gd">
+        ${row.goal_difference ?? 0}
+      </td>
+
+      <td class="pts">
+        ${row.points ?? 0}
+      </td>
+
+      <td>
+        <button
+          class="icon-button danger"
+          type="button"
+          data-delete-standing
+          aria-label="Delete team"
+        >
+          ×
+        </button>
+      </td>
+    </tr>
+  `;
 }
 
 function addStandingRow() {
-  currentStandings.push({ position: currentStandings.length + 1, team_name: "New Team", played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, goal_difference: 0, points: 0 });
+  if (!currentTeams.length) {
+    return notice(
+      "Add a team under Teams & Logos first.",
+      "error"
+    );
+  }
+
+  currentStandings.push({
+    position: currentStandings.length + 1,
+    team_id: "",
+    team_name: "",
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goals_for: 0,
+    goals_against: 0,
+    goal_difference: 0,
+    points: 0
+  });
+
   renderStandingEditor();
 }
 
@@ -302,17 +574,132 @@ function recalculateStandingRows() {
 }
 
 async function saveStandings() {
-  const rows = [...document.querySelectorAll("#standingEditorBody tr")].map(row => {
-    const value = className => row.querySelector(`.${className}`).value;
-    return { id: row.dataset.id || undefined, position: Number(value("pos")), team_name: value("team").trim(), played: Number(value("p")), won: Number(value("w")), drawn: Number(value("d")), lost: Number(value("l")), goals_for: Number(value("gf")), goals_against: Number(value("ga")), goal_difference: Number(row.querySelector(".gd").textContent), points: Number(row.querySelector(".pts").textContent), updated_at: new Date().toISOString() };
+  const button =
+    document.getElementById("saveStandings");
+
+  if (button?.dataset.saveBusy === "true") return;
+
+  const editorRows = [
+    ...document.querySelectorAll(
+      "#standingEditorBody tr"
+    )
+  ];
+
+  const rows = editorRows.map(row => {
+    const value = className =>
+      row.querySelector(`.${className}`)?.value ?? "";
+
+    const teamId = String(value("team")).trim();
+
+    const team = currentTeams.find(
+      item => String(item.id) === teamId
+    );
+
+    return {
+      id: row.dataset.id || undefined,
+      position: Number(value("pos")),
+      team_id: teamId || null,
+      team_name: team?.team_name || "",
+      played: Number(value("p")),
+      won: Number(value("w")),
+      drawn: Number(value("d")),
+      lost: Number(value("l")),
+      goals_for: Number(value("gf")),
+      goals_against: Number(value("ga")),
+      goal_difference: Number(
+        row.querySelector(".gd").textContent
+      ),
+      points: Number(
+        row.querySelector(".pts").textContent
+      ),
+      updated_at: new Date().toISOString()
+    };
   });
-  if (rows.some(row => !row.team_name)) return notice("Every row needs a team name.", "error");
+
+  if (rows.some(row => !row.team_id)) {
+    return notice(
+      "Select a registered team for every row.",
+      "error"
+    );
+  }
+
+  const selectedTeamIds = rows.map(row => row.team_id);
+
+  if (
+    new Set(selectedTeamIds).size !==
+    selectedTeamIds.length
+  ) {
+    return notice(
+      "The same team cannot appear twice in the standings.",
+      "error"
+    );
+  }
+
   const existing = rows.filter(row => row.id);
-  const fresh = rows.filter(row => !row.id).map(({ id, ...row }) => row);
-  if (existing.length) { const { error } = await client().from("standings").upsert(existing, { onConflict: "id" }); if (error) return notice(error.message, "error"); }
-  if (fresh.length) { const { error } = await client().from("standings").insert(fresh); if (error) return notice(error.message, "error"); }
-  notice("Standings updated live.");
-  await loadStandings();
+
+  const fresh = rows
+    .filter(row => !row.id)
+    .map(({ id, ...row }) => row);
+
+  if (button) {
+    button.dataset.saveBusy = "true";
+    button.dataset.originalText ||=
+      button.textContent.trim();
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  showAdminTaskToast(
+    "Saving standings and team selections…",
+    "loading",
+    { persistent: true }
+  );
+
+  try {
+    if (existing.length) {
+      const { error } = await client()
+        .from("standings")
+        .upsert(existing, {
+          onConflict: "id"
+        });
+
+      if (error) throw new Error(error.message);
+    }
+
+    if (fresh.length) {
+      const { error } = await client()
+        .from("standings")
+        .insert(fresh);
+
+      if (error) throw new Error(error.message);
+    }
+
+    showAdminTaskToast(
+      "Standings saved successfully.",
+      "success"
+    );
+
+    notice("Standings updated live.");
+    await loadStandings();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "Standings could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "Standings could not be saved.",
+      "error"
+    );
+  } finally {
+    if (button) {
+      button.dataset.saveBusy = "false";
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText ||
+        "Save standings live";
+    }
+  }
 }
 
 async function deleteStanding(button) {
@@ -785,6 +1172,613 @@ async function uploadFile(file, folder) {
   return data.publicUrl;
 }
 
+let currentTeams = [];
+
+function teamInitials(teamName, savedCode = "") {
+  const supplied = String(savedCode || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 5);
+
+  if (supplied) return supplied;
+
+  const generated = String(teamName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 5);
+
+  return generated || "FC";
+}
+
+function clampTeamLogoValue(value, minimum, maximum, fallback) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return fallback;
+
+  return Math.min(maximum, Math.max(minimum, number));
+}
+
+function readTeamLogoAdjustment(source = {}) {
+  const isForm = Boolean(source?.elements);
+
+  const scaleValue = isForm
+    ? source.elements.logo_scale?.value
+    : (source.logo_scale ?? source.scale);
+
+  const offsetXValue = isForm
+    ? source.elements.logo_offset_x?.value
+    : (source.logo_offset_x ?? source.offsetX);
+
+  const offsetYValue = isForm
+    ? source.elements.logo_offset_y?.value
+    : (source.logo_offset_y ?? source.offsetY);
+
+  return {
+    scale: clampTeamLogoValue(
+      scaleValue,
+      50,
+      250,
+      100
+    ),
+
+    offsetX: clampTeamLogoValue(
+      offsetXValue,
+      -40,
+      40,
+      0
+    ),
+
+    offsetY: clampTeamLogoValue(
+      offsetYValue,
+      -40,
+      40,
+      0
+    )
+  };
+}
+
+function teamLogoTransform(source = {}) {
+  const adjustment = readTeamLogoAdjustment(source);
+
+  return [
+    `translate(${adjustment.offsetX}%,`,
+    `${adjustment.offsetY}%)`,
+    `scale(${adjustment.scale / 100})`
+  ].join(" ");
+}
+
+function updateTeamLogoControlLabels(form) {
+  const adjustment = readTeamLogoAdjustment(form);
+
+  const scaleOutput =
+    document.getElementById("teamLogoScaleValue");
+
+  const offsetXOutput =
+    document.getElementById("teamLogoOffsetXValue");
+
+  const offsetYOutput =
+    document.getElementById("teamLogoOffsetYValue");
+
+  if (scaleOutput) {
+    scaleOutput.textContent = `${adjustment.scale}%`;
+  }
+
+  if (offsetXOutput) {
+    offsetXOutput.textContent =
+      `${adjustment.offsetX > 0 ? "+" : ""}` +
+      `${adjustment.offsetX}%`;
+  }
+
+  if (offsetYOutput) {
+    offsetYOutput.textContent =
+      `${adjustment.offsetY > 0 ? "+" : ""}` +
+      `${adjustment.offsetY}%`;
+  }
+}
+
+function refreshTeamLogoPreview(form) {
+  const preview = document.getElementById("teamLogoPreview");
+
+  if (!preview) return;
+
+  const existingImage = preview.querySelector("img");
+
+  const imageUrl =
+    existingImage?.src ||
+    form.elements.existing_logo_url?.value ||
+    "";
+
+  const code = teamInitials(
+    form.elements.team_name?.value,
+    form.elements.short_code?.value
+  );
+
+  updateTeamLogoControlLabels(form);
+
+  updateTeamLogoPreview(
+    imageUrl,
+    code,
+    readTeamLogoAdjustment(form)
+  );
+}
+
+function teamBadgeMarkup(team) {
+  const code = teamInitials(team.team_name, team.short_code);
+
+  if (!team.logo_url) {
+    return `
+      <div class="team-admin-badge team-admin-badge--fallback">
+        ${esc(code)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="team-admin-badge">
+      <img
+        src="${esc(team.logo_url)}"
+        alt="${esc(team.team_name)} badge"
+        loading="lazy"
+        data-team-logo
+        style="transform: ${teamLogoTransform(team)};"
+      >
+      <span hidden>${esc(code)}</span>
+    </div>
+  `;
+}
+
+async function loadTeams() {
+  const list = document.getElementById("teamAdminList");
+  if (!list) return;
+
+  list.innerHTML =
+    '<div class="admin-empty">Loading teams…</div>';
+
+  const { data, error } = await client()
+    .from("teams")
+    .select("*")
+    .order("is_home_club", { ascending: false })
+    .order("team_name", { ascending: true });
+
+  if (error) {
+    list.innerHTML =
+      '<div class="admin-empty">Teams could not be loaded.</div>';
+    return notice(error.message, "error");
+  }
+
+  currentTeams = data || [];
+
+  list.innerHTML = currentTeams.length
+    ? currentTeams.map(team => `
+        <article class="admin-list-card team-admin-card">
+          ${teamBadgeMarkup(team)}
+
+          <div class="team-admin-card__content">
+            <div class="admin-list-meta">
+              <span>${esc(
+                teamInitials(team.team_name, team.short_code)
+              )}</span>
+
+              <span>
+                ${team.is_home_club ? "Home club" : "Rival club"}
+                ${team.published ? "" : " • Hidden"}
+              </span>
+            </div>
+
+            <h3>${esc(team.team_name)}</h3>
+
+            <div class="admin-list-actions">
+              <button
+                data-edit-team="${esc(team.id)}"
+                type="button"
+              >
+                Edit
+              </button>
+
+              <button
+                class="danger-text"
+                data-delete-team="${esc(team.id)}"
+                type="button"
+                ${team.is_home_club ? "disabled" : ""}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </article>
+      `).join("")
+    : '<div class="admin-empty">No teams have been added.</div>';
+
+  list
+    .querySelectorAll("[data-team-logo]")
+    .forEach(image => {
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        image.nextElementSibling.hidden = false;
+      });
+    });
+
+  list
+    .querySelectorAll("[data-edit-team]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editTeam(button.dataset.editTeam);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-team]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deleteTeam(button.dataset.deleteTeam);
+      });
+    });
+}
+
+function updateTeamLogoPreview(
+  url,
+  code = "LOGO",
+  settings = {}
+) {
+  const preview = document.getElementById("teamLogoPreview");
+  if (!preview) return;
+
+  if (!url) {
+    preview.innerHTML = `<span>${esc(code || "LOGO")}</span>`;
+    return;
+  }
+
+  preview.innerHTML = `
+    <img
+      src="${esc(url)}"
+      alt="Team badge preview"
+      style="transform: ${teamLogoTransform(settings)};"
+    >
+  `;
+}
+
+function editTeam(id) {
+  const team = currentTeams.find(item => item.id === id);
+  if (!team) return;
+
+  const form = document.getElementById("teamForm");
+
+  form.elements.id.value = team.id;
+  form.elements.team_name.value = team.team_name || "";
+  form.elements.short_code.value = team.short_code || "";
+  form.elements.existing_logo_url.value = team.logo_url || "";
+  form.elements.is_home_club.checked =
+    Boolean(team.is_home_club);
+  form.elements.published.checked =
+    Boolean(team.published);
+
+  form.elements.logo_scale.value =
+    team.logo_scale ?? 100;
+
+  form.elements.logo_offset_x.value =
+    team.logo_offset_x ?? 0;
+
+  form.elements.logo_offset_y.value =
+    team.logo_offset_y ?? 0;
+
+  updateTeamLogoControlLabels(form);
+
+  updateTeamLogoPreview(
+    team.logo_url,
+    teamInitials(team.team_name, team.short_code),
+    team
+  );
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function resetTeamForm() {
+  const form = document.getElementById("teamForm");
+  if (!form) return;
+
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.existing_logo_url.value = "";
+  form.elements.published.checked = true;
+
+  form.elements.logo_scale.value = 100;
+  form.elements.logo_offset_x.value = 0;
+  form.elements.logo_offset_y.value = 0;
+
+  updateTeamLogoControlLabels(form);
+
+  updateTeamLogoPreview(
+    "",
+    "LOGO",
+    readTeamLogoAdjustment(form)
+  );
+}
+
+async function saveTeam(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  if (!form.checkValidity()) return form.reportValidity();
+
+  if (form.dataset.saveBusy === "true") return;
+
+  const data = new FormData(form);
+  const teamName = String(data.get("team_name") || "").trim();
+  const shortCode = teamInitials(
+    teamName,
+    data.get("short_code")
+  );
+
+  const file = data.get("logo_file");
+
+  const adjustment =
+    readTeamLogoAdjustment(form);
+
+  let logoUrl = String(
+    data.get("existing_logo_url") || ""
+  ).trim();
+
+  if (!teamName) {
+    return notice("Enter the team name.", "error");
+  }
+
+  if (!/^[A-Z0-9]{1,5}$/.test(shortCode)) {
+    return notice(
+      "The short code must contain 1 to 5 letters or numbers.",
+      "error"
+    );
+  }
+
+  if (file?.size) {
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return notice(
+        "Use a PNG, JPG or WebP badge.",
+        "error"
+      );
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      return notice(
+        "The team badge must be smaller than 2 MB.",
+        "error"
+      );
+    }
+  }
+
+  const button = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  form.dataset.saveBusy = "true";
+
+  if (button) {
+    button.dataset.originalText ||= button.textContent.trim();
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  try {
+    if (file?.size) {
+      showAdminTaskToast(
+        "Uploading the team badge…",
+        "loading",
+        { persistent: true }
+      );
+
+      logoUrl = await uploadFile(file, "team-logos");
+    }
+
+    showAdminTaskToast(
+      "Saving the team details…",
+      "loading",
+      { persistent: true }
+    );
+
+    const payload = {
+      team_name: teamName,
+      short_code: shortCode,
+      logo_url: logoUrl || null,
+      logo_scale: adjustment.scale,
+      logo_offset_x: adjustment.offsetX,
+      logo_offset_y: adjustment.offsetY,
+      is_home_club:
+        data.get("is_home_club") === "on",
+      published:
+        data.get("published") === "on",
+      updated_at: new Date().toISOString()
+    };
+
+    const id = String(data.get("id") || "");
+
+    const { error } = id
+      ? await client()
+          .from("teams")
+          .update(payload)
+          .eq("id", id)
+      : await client()
+          .from("teams")
+          .insert(payload);
+
+    if (error) throw new Error(error.message);
+
+    showAdminTaskToast(
+      id
+        ? "Team updated successfully."
+        : "Team added successfully.",
+      "success"
+    );
+
+    resetTeamForm();
+    await loadTeams();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "The team could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "The team could not be saved.",
+      "error"
+    );
+  } finally {
+    form.dataset.saveBusy = "false";
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText || "Save team";
+    }
+  }
+}
+
+async function deleteTeam(id) {
+  const team = currentTeams.find(item => item.id === id);
+  if (!team) return;
+
+  if (team.is_home_club) {
+    return notice(
+      "Imperial Athletic Club cannot be deleted.",
+      "error"
+    );
+  }
+
+  if (!confirm(`Delete ${team.team_name}?`)) return;
+
+  const { error } = await client()
+    .from("teams")
+    .delete()
+    .eq("id", id);
+
+  if (error) return notice(error.message, "error");
+
+  notice("Team removed.");
+  await loadTeams();
+}
+
+function setupTeamAdmin() {
+  const form = document.getElementById("teamForm");
+  const resetButton =
+    document.getElementById("resetTeamForm");
+  const tab = document.querySelector(
+    '[data-admin-tab="teams"]'
+  );
+
+  form?.addEventListener("submit", saveTeam);
+  resetButton?.addEventListener("click", resetTeamForm);
+
+  tab?.addEventListener("click", () => {
+    loadTeams();
+  });
+
+  document
+    .querySelector('[data-admin-tab="standings"]')
+    ?.addEventListener("click", () => {
+      loadStandings();
+    });
+
+  form?.elements.short_code?.addEventListener(
+    "input",
+    event => {
+      event.target.value = event.target.value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 5);
+    }
+  );
+
+  form?.elements.logo_file?.addEventListener(
+    "change",
+    event => {
+      const file = event.target.files?.[0];
+
+      if (!file) {
+        const existing =
+          form.elements.existing_logo_url.value;
+
+        updateTeamLogoPreview(
+          existing,
+          teamInitials(
+            form.elements.team_name.value,
+            form.elements.short_code.value
+          ),
+          readTeamLogoAdjustment(form)
+        );
+
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+
+      updateTeamLogoPreview(
+        previewUrl,
+        teamInitials(
+          form.elements.team_name.value,
+          form.elements.short_code.value
+        ),
+        readTeamLogoAdjustment(form)
+      );
+    }
+  );
+
+  form?.elements.team_name?.addEventListener(
+    "input",
+    () => {
+      if (
+        !form.elements.logo_file.files?.length &&
+        !form.elements.existing_logo_url.value
+      ) {
+        updateTeamLogoPreview(
+          "",
+          teamInitials(
+            form.elements.team_name.value,
+            form.elements.short_code.value
+          ),
+          readTeamLogoAdjustment(form)
+        );
+      }
+    }
+  );
+
+  const adjustmentInputs = [
+    form?.elements.logo_scale,
+    form?.elements.logo_offset_x,
+    form?.elements.logo_offset_y
+  ].filter(Boolean);
+
+  adjustmentInputs.forEach(input => {
+    input.addEventListener("input", () => {
+      refreshTeamLogoPreview(form);
+    });
+  });
+
+  document
+    .getElementById("resetTeamLogoAdjustments")
+    ?.addEventListener("click", () => {
+      form.elements.logo_scale.value = 100;
+      form.elements.logo_offset_x.value = 0;
+      form.elements.logo_offset_y.value = 0;
+
+      refreshTeamLogoPreview(form);
+    });
+
+  updateTeamLogoControlLabels(form);
+}
+
 async function loadSettings() {
   const { data, error } = await client().from("site_settings").select("key,value");
   if (error) return notice(error.message, "error");
@@ -806,4 +1800,5 @@ async function saveSettings(event) {
   notice("Public visibility updated.");
 }
 
+document.addEventListener("DOMContentLoaded", setupTeamAdmin);
 document.addEventListener("DOMContentLoaded", initAdmin);
