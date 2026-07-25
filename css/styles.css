@@ -2287,3 +2287,857 @@ body[data-page="fixtures"]
 }
 
 /* End standing crest background rules */
+
+/* Squad and legacy player Admin */
+.player-admin-layout {
+  display: grid;
+  grid-template-columns:
+    minmax(240px, 320px)
+    minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.player-photo-admin {
+  display: grid;
+  gap: 16px;
+}
+
+.player-photo-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.player-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.player-admin-fields {
+  align-content: start;
+}
+
+.player-admin-card {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.player-admin-card__photo {
+  min-height: 230px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+}
+
+.player-admin-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.player-admin-card__fallback {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 50%;
+  background: var(--blue);
+  font-weight: 900;
+}
+
+.player-admin-card__content {
+  padding: 24px;
+}
+
+.player-admin-card__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.player-admin-card__heading h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 2rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-admin-card__nickname {
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.player-admin-card__number {
+  color: var(--blue);
+  font-family: var(--display);
+  font-size: 2rem;
+}
+
+.player-admin-card__meta {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.player-admin-card__meta span,
+.player-admin-card__legacy {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.player-admin-card__legacy {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--blue);
+}
+
+.player-admin-card__stats {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.player-admin-card__stats span {
+  padding: 12px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.player-admin-card__stats strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+@media (max-width: 900px) {
+  .player-admin-layout,
+  .player-admin-card {
+    grid-template-columns: 1fr;
+  }
+
+  .player-photo-preview {
+    max-width: 360px;
+  }
+
+  .player-admin-card__photo {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 600px) {
+  .player-admin-card__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Minimal Squad and Legacy Admin cards */
+.player-admin-card__content h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-admin-card__position {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.player-admin-card__content .eyebrow {
+  margin-bottom: 10px;
+}
+
+/* Final compact player directory */
+.player-directory-toolbar {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.player-directory-toolbar label {
+  min-width: min(100%, 280px);
+  display: grid;
+  gap: 7px;
+}
+
+.player-directory-toolbar label span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.player-directory-toolbar select {
+  min-height: 42px;
+}
+
+#playerDirectoryCount {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.player-directory-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.player-directory-item {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.player-directory-item__body {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.player-directory-item__photo {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.player-directory-item__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.player-directory-item__initials {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.player-directory-item__identity {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+}
+
+.player-directory-item__section {
+  margin-bottom: 5px;
+  color: var(--blue);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-directory-item__name {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ink);
+  border: 0;
+  background: transparent;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.player-directory-item__name:hover {
+  color: var(--blue);
+}
+
+.player-directory-item__position {
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-directory-item__actions {
+  margin-top: auto;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.player-directory-item__actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+}
+
+.player-directory-empty {
+  grid-column: 1 / -1;
+  padding: 30px;
+  border: 1px dashed var(--line);
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .player-directory-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .player-directory-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .player-directory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .player-directory-item__body {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .player-directory-item__photo {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* Final Squad and Legacy directory design */
+#playerAdminList.player-directory-grid {
+  display: block;
+}
+
+.player-mini-section {
+  margin-top: 22px;
+}
+
+.player-mini-section:first-child {
+  margin-top: 18px;
+}
+
+.player-mini-section__heading {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.player-mini-section__heading h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.65rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-mini-section__heading span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.player-mini-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.player-mini-card {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    104px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.player-mini-card__main {
+  min-width: 0;
+  padding: 13px;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+}
+
+.player-mini-card__photo {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.player-mini-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.player-mini-card__photo
+.player-directory-item__initials {
+  width: 100%;
+  height: 100%;
+}
+
+.player-mini-card__identity {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+}
+
+.player-mini-card__type {
+  margin-bottom: 6px;
+  color: var(--blue);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-mini-card__name {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ink);
+  border: 0;
+  background: transparent;
+  font-family: var(--display);
+  font-size: 1.45rem;
+  line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.player-mini-card__name:hover {
+  color: var(--blue);
+}
+
+.player-mini-card__position {
+  max-width: 100%;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-mini-card__actions {
+  padding: 10px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.player-mini-card__actions button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.player-mini-card__edit {
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  background: #ffffff;
+}
+
+.player-mini-card__edit:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.player-mini-card__delete {
+  color: #ffffff;
+  border: 1px solid var(--danger);
+  background: var(--danger);
+}
+
+.player-mini-card__delete:hover {
+  filter: brightness(0.92);
+}
+
+.player-mini-empty {
+  padding: 28px;
+  border: 1px dashed var(--line);
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .player-mini-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .player-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .player-mini-card {
+    grid-template-columns:
+      minmax(0, 1fr)
+      96px;
+  }
+}
+
+@media (max-width: 430px) {
+  .player-mini-card {
+    grid-template-columns: 1fr;
+  }
+
+  .player-mini-card__actions {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+CSScat >> css/styles.css <<'CSS'
+
+/* Final Squad and Legacy directory design */
+#playerAdminList.player-directory-grid {
+  display: block;
+}
+
+.player-mini-section {
+  margin-top: 22px;
+}
+
+.player-mini-section:first-child {
+  margin-top: 18px;
+}
+
+.player-mini-section__heading {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.player-mini-section__heading h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.65rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-mini-section__heading span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.player-mini-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.player-mini-card {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    104px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.player-mini-card__main {
+  min-width: 0;
+  padding: 13px;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+}
+
+.player-mini-card__photo {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.player-mini-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.player-mini-card__photo
+.player-directory-item__initials {
+  width: 100%;
+  height: 100%;
+}
+
+.player-mini-card__identity {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+}
+
+.player-mini-card__type {
+  margin-bottom: 6px;
+  color: var(--blue);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-mini-card__name {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ink);
+  border: 0;
+  background: transparent;
+  font-family: var(--display);
+  font-size: 1.45rem;
+  line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.player-mini-card__name:hover {
+  color: var(--blue);
+}
+
+.player-mini-card__position {
+  max-width: 100%;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-mini-card__actions {
+  padding: 10px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.player-mini-card__actions button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.player-mini-card__edit {
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  background: #ffffff;
+}
+
+.player-mini-card__edit:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.player-mini-card__delete {
+  color: #ffffff;
+  border: 1px solid var(--danger);
+  background: var(--danger);
+}
+
+.player-mini-card__delete:hover {
+  filter: brightness(0.92);
+}
+
+.player-mini-empty {
+  padding: 28px;
+  border: 1px dashed var(--line);
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .player-mini-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .player-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .player-mini-card {
+    grid-template-columns:
+      minmax(0, 1fr)
+      96px;
+  }
+}
+
+@media (max-width: 430px) {
+  .player-mini-card {
+    grid-template-columns: 1fr;
+  }
+
+  .player-mini-card__actions {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+
+/* Player directory heading filter layout */
+[data-admin-panel="players"]
+.admin-section-head:has(
+  + #playerAdminList
+),
+[data-admin-panel="players"]
+.admin-section-head:has(
+  .player-directory-toolbar
+) {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(360px, 560px);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+
+[data-admin-panel="players"]
+.admin-section-head
+.player-directory-toolbar {
+  width: 100%;
+  margin: 0;
+  padding: 15px 17px;
+  align-self: center;
+}
+
+[data-admin-panel="players"]
+.player-directory-toolbar label {
+  min-width: 0;
+  flex: 1;
+}
+
+[data-admin-panel="players"]
+.player-directory-toolbar select {
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  [data-admin-panel="players"]
+  .admin-section-head:has(
+    .player-directory-toolbar
+  ) {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  [data-admin-panel="players"]
+  .admin-section-head
+  .player-directory-toolbar {
+    max-width: none;
+  }
+}
+/* End player directory heading filter layout */
