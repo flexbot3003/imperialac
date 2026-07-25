@@ -275,6 +275,65 @@ function activateStandingLogoFallbacks(root = document) {
     });
 }
 
+function standingMovementMarkup(row) {
+  const current = Number(row.position);
+  const previous =
+    Number(row.previous_position);
+
+  if (
+    !Number.isFinite(previous) ||
+    previous <= 0
+  ) {
+    return `
+      <span
+        class="standing-movement standing-movement--new"
+        title="New team"
+        aria-label="New team in the standings"
+      >
+        NEW
+      </span>
+    `;
+  }
+
+  const movement = previous - current;
+
+  if (movement > 0) {
+    return `
+      <span
+        class="standing-movement standing-movement--up"
+        title="Moved up ${movement}"
+        aria-label="Moved up ${movement} position${movement === 1 ? "" : "s"}"
+      >
+        ▲ ${movement}
+      </span>
+    `;
+  }
+
+  if (movement < 0) {
+    const amount = Math.abs(movement);
+
+    return `
+      <span
+        class="standing-movement standing-movement--down"
+        title="Moved down ${amount}"
+        aria-label="Moved down ${amount} position${amount === 1 ? "" : "s"}"
+      >
+        ▼ ${amount}
+      </span>
+    `;
+  }
+
+  return `
+    <span
+      class="standing-movement standing-movement--same"
+      title="No position change"
+      aria-label="No position change"
+    >
+      —
+    </span>
+  `;
+}
+
 async function renderStandings() {
   const mount = document.getElementById("standingsBody");
 
@@ -350,7 +409,10 @@ async function renderStandings() {
 
     return `
       <tr class="${isImperial ? "is-imperial" : ""}">
-        <td>${row.position}</td>
+        <td class="standing-position-cell">
+          <strong>${row.position}</strong>
+          ${standingMovementMarkup(row)}
+        </td>
 
         <td class="club-cell">
           ${standingTeamBadge(row.team_name, team)}

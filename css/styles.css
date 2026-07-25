@@ -1205,3 +1205,79 @@ button { cursor: pointer; }
   color: #ffffff;
 }
 /* End Imperial blue public badge background */
+
+/* Standings movement indicators */
+.admin-table input.pos[readonly] {
+  background: #eef3fb;
+  color: var(--blue);
+  font-weight: 900;
+  cursor: not-allowed;
+}
+
+.standing-position-cell {
+  white-space: nowrap;
+}
+
+.standing-position-cell > strong {
+  display: inline-block;
+  min-width: 1.2rem;
+}
+
+.standing-movement {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  margin-left: 0.35rem;
+  padding: 0.2rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.standing-movement--up {
+  color: #08783e;
+  background: #e5f7ed;
+}
+
+.standing-movement--down {
+  color: #b42318;
+  background: #fdecea;
+}
+
+.standing-movement--same {
+  color: #667085;
+  background: #f0f2f5;
+}
+
+.standing-movement--new {
+  color: var(--blue);
+  background: #e8f0ff;
+}
+
+/* Automatic standings fields */
+.standing-auto-position,
+.standing-auto-stat {
+  background: #f4f7fc;
+  color: var(--blue);
+  font-weight: 900;
+  text-align: center;
+}
+
+.pos-display {
+  display: inline-flex;
+  min-width: 2.4rem;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: #eef3fb;
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.standing-auto-stat {
+  min-width: 3rem;
+}
+

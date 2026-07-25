@@ -449,13 +449,13 @@ function standingTeamOptions(row = {}) {
 function standingRow(row = {}) {
   return `
     <tr data-id="${esc(row.id || "")}">
-      <td>
-        <input
-          class="pos"
-          type="number"
-          min="1"
-          value="${row.position ?? currentStandings.length + 1}"
+      <td class="standing-auto-position">
+        <span
+          class="pos-display"
+          aria-label="Automatic league position"
         >
+          ${row.position ?? currentStandings.length + 1}
+        </span>
       </td>
 
       <td>
@@ -464,13 +464,8 @@ function standingRow(row = {}) {
         </select>
       </td>
 
-      <td>
-        <input
-          class="p"
-          type="number"
-          min="0"
-          value="${row.played ?? 0}"
-        >
+      <td class="standing-auto-stat p">
+        ${row.played ?? 0}
       </td>
 
       <td>
@@ -518,11 +513,11 @@ function standingRow(row = {}) {
         >
       </td>
 
-      <td class="gd">
+      <td class="standing-auto-stat gd">
         ${row.goal_difference ?? 0}
       </td>
 
-      <td class="pts">
+      <td class="standing-auto-stat pts">
         ${row.points ?? 0}
       </td>
 
@@ -566,11 +561,33 @@ function addStandingRow() {
 }
 
 function recalculateStandingRows() {
-  document.querySelectorAll("#standingEditorBody tr").forEach(row => {
-    const numberValue = className => Number(row.querySelector(`.${className}`).value || 0);
-    row.querySelector(".gd").textContent = numberValue("gf") - numberValue("ga");
-    row.querySelector(".pts").textContent = numberValue("w") * 3 + numberValue("d");
-  });
+  document
+    .querySelectorAll("#standingEditorBody tr")
+    .forEach(row => {
+      const numberValue = className => {
+        const input = row.querySelector(`.${className}`);
+        return Math.max(0, Number(input?.value || 0));
+      };
+
+      const won = numberValue("w");
+      const drawn = numberValue("d");
+      const lost = numberValue("l");
+      const goalsFor = numberValue("gf");
+      const goalsAgainst = numberValue("ga");
+
+      const played = won + drawn + lost;
+      const goalDifference = goalsFor - goalsAgainst;
+      const points = won * 3 + drawn;
+
+      row.querySelector(".p").textContent =
+        String(played);
+
+      row.querySelector(".gd").textContent =
+        String(goalDifference);
+
+      row.querySelector(".pts").textContent =
+        String(points);
+    });
 }
 
 async function saveStandings() {
@@ -579,39 +596,63 @@ async function saveStandings() {
 
   if (button?.dataset.saveBusy === "true") return;
 
+  recalculateStandingRows();
+
   const editorRows = [
     ...document.querySelectorAll(
       "#standingEditorBody tr"
     )
   ];
 
-  const rows = editorRows.map(row => {
-    const value = className =>
+  const previousPositions = new Map(
+    currentStandings
+      .filter(row => row.id)
+      .map(row => [
+        String(row.id),
+        Number(row.position)
+      ])
+  );
+
+  let rows = editorRows.map(row => {
+    const inputValue = className =>
       row.querySelector(`.${className}`)?.value ?? "";
 
-    const teamId = String(value("team")).trim();
+    const teamId =
+      String(inputValue("team")).trim();
 
     const team = currentTeams.find(
       item => String(item.id) === teamId
     );
 
+    const id = row.dataset.id || undefined;
+
     return {
-      id: row.dataset.id || undefined,
-      position: Number(value("pos")),
+      id,
       team_id: teamId || null,
       team_name: team?.team_name || "",
-      played: Number(value("p")),
-      won: Number(value("w")),
-      drawn: Number(value("d")),
-      lost: Number(value("l")),
-      goals_for: Number(value("gf")),
-      goals_against: Number(value("ga")),
+
+      played: Number(
+        row.querySelector(".p").textContent
+      ),
+
+      won: Number(inputValue("w")),
+      drawn: Number(inputValue("d")),
+      lost: Number(inputValue("l")),
+      goals_for: Number(inputValue("gf")),
+      goals_against: Number(inputValue("ga")),
+
       goal_difference: Number(
         row.querySelector(".gd").textContent
       ),
+
       points: Number(
         row.querySelector(".pts").textContent
       ),
+
+      previous_position: id
+        ? previousPositions.get(String(id)) ?? null
+        : null,
+
       updated_at: new Date().toISOString()
     };
   });
@@ -623,34 +664,63 @@ async function saveStandings() {
     );
   }
 
-  const selectedTeamIds = rows.map(row => row.team_id);
+  const teamIds = rows.map(row => row.team_id);
 
-  if (
-    new Set(selectedTeamIds).size !==
-    selectedTeamIds.length
-  ) {
+  if (new Set(teamIds).size !== teamIds.length) {
     return notice(
-      "The same team cannot appear twice in the standings.",
+      "The same team cannot appear twice.",
       "error"
     );
   }
 
-  const existing = rows.filter(row => row.id);
+  rows.sort((a, b) => {
+    return (
+      b.points - a.points ||
+      b.goal_difference - a.goal_difference ||
+      b.goals_for - a.goals_for ||
+      a.team_name.localeCompare(
+        b.team_name,
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
+  });
+
+  rows = rows.map((row, index) => ({
+    ...row,
+    position: index + 1
+  }));
+
+  const existing =
+    rows.filter(row => row.id);
 
   const fresh = rows
     .filter(row => !row.id)
     .map(({ id, ...row }) => row);
 
+  const controls = [
+    ...document.querySelectorAll(
+      "#standingEditorBody input, " +
+      "#standingEditorBody select, " +
+      "#standingEditorBody button"
+    )
+  ];
+
   if (button) {
     button.dataset.saveBusy = "true";
     button.dataset.originalText ||=
       button.textContent.trim();
+
     button.disabled = true;
     button.textContent = "Saving…";
   }
 
+  controls.forEach(control => {
+    control.disabled = true;
+  });
+
   showAdminTaskToast(
-    "Saving standings and team selections…",
+    "Saving standings and calculating league positions…",
     "loading",
     { persistent: true }
   );
@@ -675,26 +745,34 @@ async function saveStandings() {
     }
 
     showAdminTaskToast(
-      "Standings saved successfully.",
+      "Standings saved and positions updated.",
       "success"
     );
 
     notice("Standings updated live.");
+
     await loadStandings();
   } catch (error) {
     showAdminTaskToast(
-      error.message || "Standings could not be saved.",
+      error.message ||
+        "Standings could not be saved.",
       "error"
     );
 
     notice(
-      error.message || "Standings could not be saved.",
+      error.message ||
+        "Standings could not be saved.",
       "error"
     );
   } finally {
+    controls.forEach(control => {
+      control.disabled = false;
+    });
+
     if (button) {
       button.dataset.saveBusy = "false";
       button.disabled = false;
+
       button.textContent =
         button.dataset.originalText ||
         "Save standings live";
