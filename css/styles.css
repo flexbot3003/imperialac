@@ -1933,3 +1933,101 @@ body[data-page="fixtures"]
   }
 }
 
+/* Story, community image, quote and footer fixes */
+.story-image,
+.media-placeholder--image {
+  position: relative;
+  min-height: 330px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.story-image img,
+.media-placeholder--image img {
+  width: 100%;
+  height: 100%;
+  min-height: 330px;
+  display: block;
+  object-fit: cover;
+}
+
+.story-image img {
+  aspect-ratio: 4 / 3;
+}
+
+.partner-community-image {
+  min-height: 620px;
+}
+
+.partner-community-image img {
+  min-height: 620px;
+  object-position: center;
+}
+
+/* Keep the quote away from the viewport edges. */
+.quote-block {
+  padding:
+    60px
+    clamp(24px, 5vw, 72px);
+}
+
+.quote-block blockquote {
+  max-width: 1080px;
+}
+
+/*
+  The previous white filter removed all crest details
+  and made the footer badge appear as a plain circle.
+*/
+
+
+@media (max-width: 720px) {
+  .story-image,
+  .story-image img {
+    min-height: 300px;
+  }
+
+  .partner-community-image,
+  .partner-community-image img {
+    min-height: 420px;
+  }
+
+  .quote-block {
+    padding: 44px 20px;
+  }
+}
+
+/* Correct footer crest proportions */
+.brand--footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand--footer img {
+  width: 74px;
+  height: 74px;
+  flex: 0 0 74px;
+  padding: 0;
+  object-fit: contain;
+  object-position: center;
+  filter: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.brand--footer span {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .brand--footer img {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+  }
+}
+
