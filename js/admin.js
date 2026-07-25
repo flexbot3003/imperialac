@@ -449,13 +449,13 @@ function standingTeamOptions(row = {}) {
 function standingRow(row = {}) {
   return `
     <tr data-id="${esc(row.id || "")}">
-      <td>
-        <input
-          class="pos"
-          type="number"
-          min="1"
-          value="${row.position ?? currentStandings.length + 1}"
+      <td class="standing-auto-position">
+        <span
+          class="pos-display"
+          aria-label="Automatic league position"
         >
+          ${row.position ?? currentStandings.length + 1}
+        </span>
       </td>
 
       <td>
@@ -464,13 +464,8 @@ function standingRow(row = {}) {
         </select>
       </td>
 
-      <td>
-        <input
-          class="p"
-          type="number"
-          min="0"
-          value="${row.played ?? 0}"
-        >
+      <td class="standing-auto-stat p">
+        ${row.played ?? 0}
       </td>
 
       <td>
@@ -518,11 +513,11 @@ function standingRow(row = {}) {
         >
       </td>
 
-      <td class="gd">
+      <td class="standing-auto-stat gd">
         ${row.goal_difference ?? 0}
       </td>
 
-      <td class="pts">
+      <td class="standing-auto-stat pts">
         ${row.points ?? 0}
       </td>
 
@@ -566,11 +561,33 @@ function addStandingRow() {
 }
 
 function recalculateStandingRows() {
-  document.querySelectorAll("#standingEditorBody tr").forEach(row => {
-    const numberValue = className => Number(row.querySelector(`.${className}`).value || 0);
-    row.querySelector(".gd").textContent = numberValue("gf") - numberValue("ga");
-    row.querySelector(".pts").textContent = numberValue("w") * 3 + numberValue("d");
-  });
+  document
+    .querySelectorAll("#standingEditorBody tr")
+    .forEach(row => {
+      const numberValue = className => {
+        const input = row.querySelector(`.${className}`);
+        return Math.max(0, Number(input?.value || 0));
+      };
+
+      const won = numberValue("w");
+      const drawn = numberValue("d");
+      const lost = numberValue("l");
+      const goalsFor = numberValue("gf");
+      const goalsAgainst = numberValue("ga");
+
+      const played = won + drawn + lost;
+      const goalDifference = goalsFor - goalsAgainst;
+      const points = won * 3 + drawn;
+
+      row.querySelector(".p").textContent =
+        String(played);
+
+      row.querySelector(".gd").textContent =
+        String(goalDifference);
+
+      row.querySelector(".pts").textContent =
+        String(points);
+    });
 }
 
 async function saveStandings() {
@@ -579,39 +596,63 @@ async function saveStandings() {
 
   if (button?.dataset.saveBusy === "true") return;
 
+  recalculateStandingRows();
+
   const editorRows = [
     ...document.querySelectorAll(
       "#standingEditorBody tr"
     )
   ];
 
-  const rows = editorRows.map(row => {
-    const value = className =>
+  const previousPositions = new Map(
+    currentStandings
+      .filter(row => row.id)
+      .map(row => [
+        String(row.id),
+        Number(row.position)
+      ])
+  );
+
+  let rows = editorRows.map(row => {
+    const inputValue = className =>
       row.querySelector(`.${className}`)?.value ?? "";
 
-    const teamId = String(value("team")).trim();
+    const teamId =
+      String(inputValue("team")).trim();
 
     const team = currentTeams.find(
       item => String(item.id) === teamId
     );
 
+    const id = row.dataset.id || undefined;
+
     return {
-      id: row.dataset.id || undefined,
-      position: Number(value("pos")),
+      id,
       team_id: teamId || null,
       team_name: team?.team_name || "",
-      played: Number(value("p")),
-      won: Number(value("w")),
-      drawn: Number(value("d")),
-      lost: Number(value("l")),
-      goals_for: Number(value("gf")),
-      goals_against: Number(value("ga")),
+
+      played: Number(
+        row.querySelector(".p").textContent
+      ),
+
+      won: Number(inputValue("w")),
+      drawn: Number(inputValue("d")),
+      lost: Number(inputValue("l")),
+      goals_for: Number(inputValue("gf")),
+      goals_against: Number(inputValue("ga")),
+
       goal_difference: Number(
         row.querySelector(".gd").textContent
       ),
+
       points: Number(
         row.querySelector(".pts").textContent
       ),
+
+      previous_position: id
+        ? previousPositions.get(String(id)) ?? null
+        : null,
+
       updated_at: new Date().toISOString()
     };
   });
@@ -623,34 +664,63 @@ async function saveStandings() {
     );
   }
 
-  const selectedTeamIds = rows.map(row => row.team_id);
+  const teamIds = rows.map(row => row.team_id);
 
-  if (
-    new Set(selectedTeamIds).size !==
-    selectedTeamIds.length
-  ) {
+  if (new Set(teamIds).size !== teamIds.length) {
     return notice(
-      "The same team cannot appear twice in the standings.",
+      "The same team cannot appear twice.",
       "error"
     );
   }
 
-  const existing = rows.filter(row => row.id);
+  rows.sort((a, b) => {
+    return (
+      b.points - a.points ||
+      b.goal_difference - a.goal_difference ||
+      b.goals_for - a.goals_for ||
+      a.team_name.localeCompare(
+        b.team_name,
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
+  });
+
+  rows = rows.map((row, index) => ({
+    ...row,
+    position: index + 1
+  }));
+
+  const existing =
+    rows.filter(row => row.id);
 
   const fresh = rows
     .filter(row => !row.id)
     .map(({ id, ...row }) => row);
 
+  const controls = [
+    ...document.querySelectorAll(
+      "#standingEditorBody input, " +
+      "#standingEditorBody select, " +
+      "#standingEditorBody button"
+    )
+  ];
+
   if (button) {
     button.dataset.saveBusy = "true";
     button.dataset.originalText ||=
       button.textContent.trim();
+
     button.disabled = true;
     button.textContent = "Saving…";
   }
 
+  controls.forEach(control => {
+    control.disabled = true;
+  });
+
   showAdminTaskToast(
-    "Saving standings and team selections…",
+    "Saving standings and calculating league positions…",
     "loading",
     { persistent: true }
   );
@@ -675,26 +745,34 @@ async function saveStandings() {
     }
 
     showAdminTaskToast(
-      "Standings saved successfully.",
+      "Standings saved and positions updated.",
       "success"
     );
 
     notice("Standings updated live.");
+
     await loadStandings();
   } catch (error) {
     showAdminTaskToast(
-      error.message || "Standings could not be saved.",
+      error.message ||
+        "Standings could not be saved.",
       "error"
     );
 
     notice(
-      error.message || "Standings could not be saved.",
+      error.message ||
+        "Standings could not be saved.",
       "error"
     );
   } finally {
+    controls.forEach(control => {
+      control.disabled = false;
+    });
+
     if (button) {
       button.dataset.saveBusy = "false";
       button.disabled = false;
+
       button.textContent =
         button.dataset.originalText ||
         "Save standings live";
@@ -713,57 +791,470 @@ async function deleteStanding(button) {
   await loadStandings();
 }
 
+function fixtureTeamById(id) {
+  return currentTeams.find(
+    team => String(team.id) === String(id || "")
+  ) || null;
+}
+
+function fixtureTeamIdFromName(name) {
+  const normalised = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  return currentTeams.find(
+    team =>
+      String(team.team_name || "")
+        .trim()
+        .toLowerCase() === normalised
+  )?.id || "";
+}
+
+function fixtureTeamOptions(selectedId = "") {
+  const options = currentTeams.map(team => {
+    const selected =
+      String(team.id) === String(selectedId)
+        ? " selected"
+        : "";
+
+    const code = teamInitials(
+      team.team_name,
+      team.short_code
+    );
+
+    return `
+      <option value="${esc(team.id)}"${selected}>
+        ${esc(team.team_name)} (${esc(code)})
+      </option>
+    `;
+  });
+
+  return `
+    <option value=""${selectedId ? "" : " selected"}>
+      Select team
+    </option>
+
+    ${options.join("")}
+  `;
+}
+
+function refreshFixtureTeamOptions() {
+  const form = document.getElementById("fixtureForm");
+
+  if (!form) return;
+
+  const homeSelect = form.elements.home_team_id;
+  const awaySelect = form.elements.away_team_id;
+
+  if (!homeSelect || !awaySelect) return;
+
+  [...homeSelect.options].forEach(option => {
+    if (!option.value) return;
+
+    const unavailable =
+      option.value === awaySelect.value &&
+      option.value !== homeSelect.value;
+
+    option.disabled = unavailable;
+    option.hidden = unavailable;
+  });
+
+  [...awaySelect.options].forEach(option => {
+    if (!option.value) return;
+
+    const unavailable =
+      option.value === homeSelect.value &&
+      option.value !== awaySelect.value;
+
+    option.disabled = unavailable;
+    option.hidden = unavailable;
+  });
+}
+
+function populateFixtureTeamSelects(
+  homeTeamId = "",
+  awayTeamId = ""
+) {
+  const form = document.getElementById("fixtureForm");
+
+  if (!form) return;
+
+  const homeSelect = form.elements.home_team_id;
+  const awaySelect = form.elements.away_team_id;
+
+  if (!homeSelect || !awaySelect) return;
+
+  homeSelect.innerHTML =
+    fixtureTeamOptions(homeTeamId);
+
+  awaySelect.innerHTML =
+    fixtureTeamOptions(awayTeamId);
+
+  homeSelect.value = homeTeamId || "";
+  awaySelect.value = awayTeamId || "";
+
+  refreshFixtureTeamOptions();
+
+  for (const select of [homeSelect, awaySelect]) {
+    if (select.dataset.fixtureTeamListener === "true") {
+      continue;
+    }
+
+    select.dataset.fixtureTeamListener = "true";
+
+    select.addEventListener(
+      "change",
+      refreshFixtureTeamOptions
+    );
+  }
+}
+
 async function loadFixtures() {
-  const { data, error } = await client().from("fixtures").select("*").order("match_date", { ascending: false });
-  if (error) return notice(error.message, "error");
-  currentFixtures = data || [];
-  const list = document.getElementById("fixtureAdminList");
-  list.innerHTML = currentFixtures.length ? currentFixtures.map(item => {
-    const score = item.status === "result" ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}` : statusLabel(item.status);
-    return `<article class="admin-list-card"><div class="admin-list-meta"><span>${esc(shortDate(item.match_date))}</span><span>${esc(statusLabel(item.status))}${item.published ? "" : " • Hidden"}</span></div><h3>${esc(item.home_team)} <strong>${esc(score)}</strong> ${esc(item.away_team)}</h3><p>${esc(item.competition || "MPL")} • ${esc(shortTime(item.kickoff_time))}${item.venue ? ` • ${esc(item.venue)}` : ""}</p><div class="admin-list-actions"><button type="button" data-edit-fixture="${esc(item.id)}">Edit</button><button class="danger-text" type="button" data-delete-fixture="${esc(item.id)}">Delete</button></div></article>`;
-  }).join("") : '<div class="admin-empty">No fixtures or results yet.</div>';
-  list.querySelectorAll("[data-edit-fixture]").forEach(button => button.addEventListener("click", () => editFixture(button.dataset.editFixture)));
-  list.querySelectorAll("[data-delete-fixture]").forEach(button => button.addEventListener("click", () => deleteFixture(button.dataset.deleteFixture)));
+  const [teamsResponse, fixturesResponse] =
+    await Promise.all([
+      client()
+        .from("teams")
+        .select("*")
+        .order("is_home_club", { ascending: false })
+        .order("team_name", { ascending: true }),
+
+      client()
+        .from("fixtures")
+        .select("*")
+        .order("match_date", { ascending: false })
+    ]);
+
+  if (teamsResponse.error) {
+    return notice(
+      `Teams could not be loaded: ${teamsResponse.error.message}`,
+      "error"
+    );
+  }
+
+  if (fixturesResponse.error) {
+    return notice(
+      fixturesResponse.error.message,
+      "error"
+    );
+  }
+
+  currentTeams = teamsResponse.data || [];
+  currentFixtures = fixturesResponse.data || [];
+
+  const form = document.getElementById("fixtureForm");
+
+  populateFixtureTeamSelects(
+    form?.elements.home_team_id?.value || "",
+    form?.elements.away_team_id?.value || ""
+  );
+
+  const list =
+    document.getElementById("fixtureAdminList");
+
+  list.innerHTML = currentFixtures.length
+    ? currentFixtures.map(item => {
+        const score = item.status === "result"
+          ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}`
+          : statusLabel(item.status);
+
+        return `
+          <article class="admin-list-card">
+            <div class="admin-list-meta">
+              <span>${esc(shortDate(item.match_date))}</span>
+
+              <span>
+                ${esc(statusLabel(item.status))}
+                ${item.published ? "" : " • Hidden"}
+              </span>
+            </div>
+
+            <h3>
+              ${esc(item.home_team)}
+              <strong>${esc(score)}</strong>
+              ${esc(item.away_team)}
+            </h3>
+
+            <p>
+              ${esc(item.competition || "MPL")}
+              • ${esc(shortTime(item.kickoff_time))}
+              ${item.venue ? ` • ${esc(item.venue)}` : ""}
+            </p>
+
+            <div class="admin-list-actions">
+              <button
+                type="button"
+                data-edit-fixture="${esc(item.id)}"
+              >
+                Edit
+              </button>
+
+              <button
+                class="danger-text"
+                type="button"
+                data-delete-fixture="${esc(item.id)}"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+        `;
+      }).join("")
+    : '<div class="admin-empty">No fixtures or results yet.</div>';
+
+  list
+    .querySelectorAll("[data-edit-fixture]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editFixture(button.dataset.editFixture);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-fixture]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deleteFixture(button.dataset.deleteFixture);
+      });
+    });
+
   updateOverview();
 }
 
 function editFixture(id) {
-  const item = currentFixtures.find(fixture => fixture.id === id);
+  const item = currentFixtures.find(
+    fixture => fixture.id === id
+  );
+
   if (!item) return;
+
   const form = document.getElementById("fixtureForm");
-  for (const key of ["id", "competition", "status", "match_date", "home_team", "away_team", "venue", "notes"]) if (form.elements[key]) form.elements[key].value = item[key] || "";
-  form.elements.kickoff_time.value = item.kickoff_time ? String(item.kickoff_time).slice(0, 5) : "";
-  form.elements.home_score.value = item.home_score ?? "";
-  form.elements.away_score.value = item.away_score ?? "";
-  form.elements.published.checked = Boolean(item.published);
-  form.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  for (const key of [
+    "id",
+    "competition",
+    "status",
+    "match_date",
+    "venue",
+    "notes"
+  ]) {
+    if (form.elements[key]) {
+      form.elements[key].value = item[key] || "";
+    }
+  }
+
+  const homeTeamId =
+    item.home_team_id ||
+    fixtureTeamIdFromName(item.home_team);
+
+  const awayTeamId =
+    item.away_team_id ||
+    fixtureTeamIdFromName(item.away_team);
+
+  populateFixtureTeamSelects(
+    homeTeamId,
+    awayTeamId
+  );
+
+  form.elements.kickoff_time.value =
+    item.kickoff_time
+      ? String(item.kickoff_time).slice(0, 5)
+      : "";
+
+  form.elements.home_score.value =
+    item.home_score ?? "";
+
+  form.elements.away_score.value =
+    item.away_score ?? "";
+
+  form.elements.published.checked =
+    Boolean(item.published);
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
 
 function resetFixtureForm() {
   const form = document.getElementById("fixtureForm");
+
   form.reset();
   form.elements.id.value = "";
   form.elements.competition.value = "MPL";
   form.elements.status.value = "upcoming";
   form.elements.published.checked = true;
+
+  const homeClub = currentTeams.find(
+    team => team.is_home_club
+  );
+
+  populateFixtureTeamSelects(
+    homeClub?.id || "",
+    ""
+  );
 }
 
 async function saveFixture(event) {
   event.preventDefault();
+
   const form = event.currentTarget;
-  if (!form.checkValidity()) return form.reportValidity();
+
+  if (!form.checkValidity()) {
+    return form.reportValidity();
+  }
+
+  if (form.dataset.saveBusy === "true") return;
+
   const data = new FormData(form);
   const status = data.get("status");
-  const homeScore = nullableNumber(data.get("home_score"));
-  const awayScore = nullableNumber(data.get("away_score"));
-  if (status === "result" && (homeScore === null || awayScore === null)) return notice("Enter both scores before saving a result.", "error");
-  const payload = { competition: data.get("competition").trim() || "MPL", match_date: data.get("match_date") || null, kickoff_time: data.get("kickoff_time") || null, home_team: data.get("home_team").trim(), away_team: data.get("away_team").trim(), home_score: status === "result" ? homeScore : null, away_score: status === "result" ? awayScore : null, venue: data.get("venue").trim() || null, status, notes: data.get("notes").trim() || null, published: data.get("published") === "on", updated_at: new Date().toISOString() };
-  const id = data.get("id");
-  const { error } = id ? await client().from("fixtures").update(payload).eq("id", id) : await client().from("fixtures").insert(payload);
-  if (error) return notice(error.message, "error");
-  notice(id ? "Fixture updated live." : "Fixture added live.");
-  resetFixtureForm();
-  await loadFixtures();
+
+  const homeTeamId =
+    String(data.get("home_team_id") || "");
+
+  const awayTeamId =
+    String(data.get("away_team_id") || "");
+
+  const homeTeam = fixtureTeamById(homeTeamId);
+  const awayTeam = fixtureTeamById(awayTeamId);
+
+  if (!homeTeam || !awayTeam) {
+    return notice(
+      "Select both teams from Teams & Logos.",
+      "error"
+    );
+  }
+
+  if (homeTeamId === awayTeamId) {
+    return notice(
+      "A team cannot play against itself.",
+      "error"
+    );
+  }
+
+  const homeScore =
+    nullableNumber(data.get("home_score"));
+
+  const awayScore =
+    nullableNumber(data.get("away_score"));
+
+  if (
+    status === "result" &&
+    (homeScore === null || awayScore === null)
+  ) {
+    return notice(
+      "Enter both scores before saving a result.",
+      "error"
+    );
+  }
+
+  const payload = {
+    competition:
+      String(data.get("competition") || "").trim() ||
+      "MPL",
+
+    match_date:
+      data.get("match_date") || null,
+
+    kickoff_time:
+      data.get("kickoff_time") || null,
+
+    home_team_id: homeTeam.id,
+    away_team_id: awayTeam.id,
+
+    home_team: homeTeam.team_name,
+    away_team: awayTeam.team_name,
+
+    home_score:
+      status === "result" ? homeScore : null,
+
+    away_score:
+      status === "result" ? awayScore : null,
+
+    venue:
+      String(data.get("venue") || "").trim() ||
+      null,
+
+    status,
+
+    notes:
+      String(data.get("notes") || "").trim() ||
+      null,
+
+    published:
+      data.get("published") === "on",
+
+    updated_at:
+      new Date().toISOString()
+  };
+
+  const id = String(data.get("id") || "");
+  const button = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  form.dataset.saveBusy = "true";
+
+  if (button) {
+    button.dataset.originalText ||=
+      button.textContent.trim();
+
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  showAdminTaskToast(
+    "Saving the confirmed fixture…",
+    "loading",
+    { persistent: true }
+  );
+
+  try {
+    const { error } = id
+      ? await client()
+          .from("fixtures")
+          .update(payload)
+          .eq("id", id)
+      : await client()
+          .from("fixtures")
+          .insert(payload);
+
+    if (error) throw new Error(error.message);
+
+    showAdminTaskToast(
+      id
+        ? "Fixture updated successfully."
+        : "Fixture added successfully.",
+      "success"
+    );
+
+    notice(
+      id
+        ? "Fixture updated live."
+        : "Fixture added live."
+    );
+
+    resetFixtureForm();
+    await loadFixtures();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "The fixture could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "The fixture could not be saved.",
+      "error"
+    );
+  } finally {
+    form.dataset.saveBusy = "false";
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText ||
+        "Save fixture";
+    }
+  }
 }
 
 async function deleteFixture(id) {
@@ -1779,6 +2270,668 @@ function setupTeamAdmin() {
   updateTeamLogoControlLabels(form);
 }
 
+let currentPartners = [];
+
+function partnerInitials(name) {
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4) || "P";
+}
+
+function normalisePartnerUrl(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) return null;
+
+  const prepared = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
+
+  const url = new URL(prepared);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error(
+      "Partner links must use http:// or https://."
+    );
+  }
+
+  return url.toString();
+}
+
+function clampPartnerLogoValue(value, minimum, maximum) {
+  return Math.min(
+    maximum,
+    Math.max(minimum, Number(value) || 0)
+  );
+}
+
+function partnerLogoSettings(partner = {}) {
+  return {
+    scale: clampPartnerLogoValue(
+      partner.logo_scale ?? partner.scale ?? 100,
+      50,
+      250
+    ),
+
+    x: clampPartnerLogoValue(
+      partner.logo_offset_x ?? partner.x ?? 0,
+      -40,
+      40
+    ),
+
+    y: clampPartnerLogoValue(
+      partner.logo_offset_y ?? partner.y ?? 0,
+      -40,
+      40
+    )
+  };
+}
+
+function partnerLogoTransform(partner = {}) {
+  const settings = partnerLogoSettings(partner);
+
+  return [
+    `translate(${settings.x}%, ${settings.y}%)`,
+    `scale(${settings.scale / 100})`
+  ].join(" ");
+}
+
+function readPartnerLogoAdjustment(form) {
+  return {
+    logo_scale: clampPartnerLogoValue(
+      form.elements.logo_scale?.value ?? 100,
+      50,
+      250
+    ),
+
+    logo_offset_x: clampPartnerLogoValue(
+      form.elements.logo_offset_x?.value ?? 0,
+      -40,
+      40
+    ),
+
+    logo_offset_y: clampPartnerLogoValue(
+      form.elements.logo_offset_y?.value ?? 0,
+      -40,
+      40
+    )
+  };
+}
+
+function updatePartnerLogoControlLabels(form) {
+  if (!form) return;
+
+  const settings = readPartnerLogoAdjustment(form);
+
+  const scaleLabel = form.querySelector(
+    "[data-partner-scale-label]"
+  );
+
+  const xLabel = form.querySelector(
+    "[data-partner-x-label]"
+  );
+
+  const yLabel = form.querySelector(
+    "[data-partner-y-label]"
+  );
+
+  if (scaleLabel) {
+    scaleLabel.textContent =
+      `${settings.logo_scale}%`;
+  }
+
+  if (xLabel) {
+    xLabel.textContent =
+      String(settings.logo_offset_x);
+  }
+
+  if (yLabel) {
+    yLabel.textContent =
+      String(settings.logo_offset_y);
+  }
+}
+
+function partnerLogoMarkup(partner) {
+  const fallback = partnerInitials(partner.name);
+
+  if (!partner.logo_url) {
+    return `
+      <div
+        class="team-admin-badge team-admin-badge--fallback"
+      >
+        ${esc(fallback)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="team-admin-badge">
+      <img
+        src="${esc(partner.logo_url)}"
+        alt="${esc(partner.name)} logo"
+        loading="lazy"
+        data-partner-logo
+        style="transform: ${partnerLogoTransform(partner)};"
+      >
+      <span hidden>${esc(fallback)}</span>
+    </div>
+  `;
+}
+
+async function loadPartners() {
+  const list =
+    document.getElementById("partnerAdminList");
+
+  if (!list) return;
+
+  list.innerHTML =
+    '<div class="admin-empty">Loading partners…</div>';
+
+  const { data, error } = await client()
+    .from("partners")
+    .select("*")
+    .order("display_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML =
+      '<div class="admin-empty">Partners could not be loaded.</div>';
+
+    return notice(error.message, "error");
+  }
+
+  currentPartners = data || [];
+
+  const visiblePartners =
+    currentPartners.filter(partner => partner.published);
+
+  const homepageIds = new Set(
+    visiblePartners
+      .slice(0, 4)
+      .map(partner => String(partner.id))
+  );
+
+  list.innerHTML = currentPartners.length
+    ? currentPartners.map(partner => {
+        const visibleIndex = visiblePartners.findIndex(
+          item => item.id === partner.id
+        );
+
+        const homepagePosition =
+          partner.published &&
+          homepageIds.has(String(partner.id))
+            ? visibleIndex + 1
+            : null;
+
+        return `
+          <article class="admin-list-card team-admin-card">
+            ${partnerLogoMarkup(partner)}
+
+            <div class="team-admin-card__content">
+              <div class="admin-list-meta partner-status-list">
+                <span>
+                  Order ${Number(partner.display_order || 0)}
+                </span>
+
+                <span>
+                  ${
+                    !partner.published
+                      ? "Hidden"
+                      : homepagePosition
+                        ? `Homepage #${homepagePosition}`
+                        : "Directory only"
+                  }
+                </span>
+
+                <span>
+                  ${partner.website_url ? "Linked" : "No link"}
+                </span>
+              </div>
+
+              <h3>${esc(partner.name)}</h3>
+
+              ${
+                partner.website_url
+                  ? `
+                    <p>
+                      <a
+                        href="${esc(partner.website_url)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open partner website ↗
+                      </a>
+                    </p>
+                  `
+                  : "<p>No website link added.</p>"
+              }
+
+              <div class="admin-list-actions">
+                <button
+                  data-edit-partner="${esc(partner.id)}"
+                  type="button"
+                >
+                  Edit
+                </button>
+
+                <button
+                  class="danger-text"
+                  data-delete-partner="${esc(partner.id)}"
+                  type="button"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")
+    : '<div class="admin-empty">No partners added yet.</div>';
+
+  list
+    .querySelectorAll("[data-partner-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          if (image.nextElementSibling) {
+            image.nextElementSibling.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+
+  list
+    .querySelectorAll("[data-edit-partner]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editPartner(button.dataset.editPartner);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-partner]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deletePartner(button.dataset.deletePartner);
+      });
+    });
+}
+
+function updatePartnerLogoPreview(
+  url,
+  name = "",
+  settings = {}
+) {
+  const preview =
+    document.getElementById("partnerLogoPreview");
+
+  if (!preview) return;
+
+  if (!url) {
+    preview.innerHTML = `
+      <span>${esc(partnerInitials(name) || "LOGO")}</span>
+    `;
+
+    return;
+  }
+
+  preview.innerHTML = `
+    <img
+      src="${esc(url)}"
+      alt="Partner logo preview"
+      style="transform: ${partnerLogoTransform(settings)};"
+    >
+  `;
+}
+
+function editPartner(id) {
+  const partner = currentPartners.find(
+    item => item.id === id
+  );
+
+  if (!partner) return;
+
+  const form = document.getElementById("partnerForm");
+
+  form.elements.id.value = partner.id;
+  form.elements.name.value = partner.name || "";
+  form.elements.website_url.value =
+    partner.website_url || "";
+  form.elements.display_order.value =
+    partner.display_order ?? 0;
+  form.elements.existing_logo_url.value =
+    partner.logo_url || "";
+  form.elements.published.checked =
+    Boolean(partner.published);
+
+  form.elements.logo_scale.value =
+    partner.logo_scale ?? 100;
+
+  form.elements.logo_offset_x.value =
+    partner.logo_offset_x ?? 0;
+
+  form.elements.logo_offset_y.value =
+    partner.logo_offset_y ?? 0;
+
+  updatePartnerLogoControlLabels(form);
+
+  updatePartnerLogoPreview(
+    partner.logo_url,
+    partner.name,
+    partner
+  );
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function resetPartnerForm() {
+  const form = document.getElementById("partnerForm");
+
+  if (!form) return;
+
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.existing_logo_url.value = "";
+  form.elements.display_order.value = 0;
+  form.elements.published.checked = true;
+
+  form.elements.logo_scale.value = 100;
+  form.elements.logo_offset_x.value = 0;
+  form.elements.logo_offset_y.value = 0;
+
+  updatePartnerLogoControlLabels(form);
+
+  updatePartnerLogoPreview(
+    "",
+    "",
+    readPartnerLogoAdjustment(form)
+  );
+}
+
+async function savePartner(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  if (!form.checkValidity()) {
+    return form.reportValidity();
+  }
+
+  if (form.dataset.saveBusy === "true") return;
+
+  const data = new FormData(form);
+  const name = String(data.get("name") || "").trim();
+  const file = data.get("logo_file");
+
+  let logoUrl = String(
+    data.get("existing_logo_url") || ""
+  ).trim();
+
+  let websiteUrl = null;
+
+  try {
+    websiteUrl = normalisePartnerUrl(
+      data.get("website_url")
+    );
+  } catch (error) {
+    return notice(error.message, "error");
+  }
+
+  if (!name) {
+    return notice("Enter the partner name.", "error");
+  }
+
+  if (file?.size) {
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return notice(
+        "Use a PNG, JPG or WebP partner logo.",
+        "error"
+      );
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      return notice(
+        "The partner logo must be smaller than 2 MB.",
+        "error"
+      );
+    }
+  }
+
+  const button = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  form.dataset.saveBusy = "true";
+
+  if (button) {
+    button.dataset.originalText ||=
+      button.textContent.trim();
+
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  try {
+    if (file?.size) {
+      showAdminTaskToast(
+        "Uploading the partner logo…",
+        "loading",
+        { persistent: true }
+      );
+
+      logoUrl = await uploadFile(file, "partners");
+    }
+
+    showAdminTaskToast(
+      "Saving the partner details…",
+      "loading",
+      { persistent: true }
+    );
+
+    const payload = {
+      name,
+      logo_url: logoUrl || null,
+      website_url: websiteUrl,
+      display_order: Math.max(
+        0,
+        Number(data.get("display_order") || 0)
+      ),
+
+      ...readPartnerLogoAdjustment(form),
+
+      published:
+        data.get("published") === "on",
+      updated_at: new Date().toISOString()
+    };
+
+    const id = String(data.get("id") || "");
+
+    const { error } = id
+      ? await client()
+          .from("partners")
+          .update(payload)
+          .eq("id", id)
+      : await client()
+          .from("partners")
+          .insert(payload);
+
+    if (error) throw new Error(error.message);
+
+    showAdminTaskToast(
+      id
+        ? "Partner updated successfully."
+        : "Partner added successfully.",
+      "success"
+    );
+
+    resetPartnerForm();
+    await loadPartners();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "The partner could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "The partner could not be saved.",
+      "error"
+    );
+  } finally {
+    form.dataset.saveBusy = "false";
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText || "Save partner";
+    }
+  }
+}
+
+async function deletePartner(id) {
+  const partner = currentPartners.find(
+    item => item.id === id
+  );
+
+  if (!partner) return;
+
+  if (!confirm(`Delete ${partner.name}?`)) return;
+
+  const { error } = await client()
+    .from("partners")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return notice(error.message, "error");
+  }
+
+  notice("Partner deleted.");
+  await loadPartners();
+}
+
+function setupPartnerAdmin() {
+  const form = document.getElementById("partnerForm");
+  const resetButton =
+    document.getElementById("resetPartnerForm");
+  const tab = document.querySelector(
+    '[data-admin-tab="partners"]'
+  );
+
+  form?.addEventListener("submit", savePartner);
+
+  resetButton?.addEventListener(
+    "click",
+    resetPartnerForm
+  );
+
+  tab?.addEventListener("click", loadPartners);
+
+  form?.elements.logo_file?.addEventListener(
+    "change",
+    event => {
+      const file = event.target.files?.[0];
+
+      if (!file) {
+        updatePartnerLogoPreview(
+          form.elements.existing_logo_url.value,
+          form.elements.name.value
+        );
+
+        return;
+      }
+
+      updatePartnerLogoPreview(
+        URL.createObjectURL(file),
+        form.elements.name.value
+      );
+    }
+  );
+
+  form?.elements.name?.addEventListener(
+    "input",
+    () => {
+      if (
+        !form.elements.logo_file.files?.length &&
+        !form.elements.existing_logo_url.value
+      ) {
+        updatePartnerLogoPreview(
+          "",
+          form.elements.name.value,
+          readPartnerLogoAdjustment(form)
+        );
+      }
+    }
+  );
+
+  [
+    "logo_scale",
+    "logo_offset_x",
+    "logo_offset_y"
+  ].forEach(fieldName => {
+    form?.elements[fieldName]?.addEventListener(
+      "input",
+      () => {
+        updatePartnerLogoControlLabels(form);
+
+        const file =
+          form.elements.logo_file.files?.[0];
+
+        const previewUrl = file
+          ? URL.createObjectURL(file)
+          : form.elements.existing_logo_url.value;
+
+        updatePartnerLogoPreview(
+          previewUrl,
+          form.elements.name.value,
+          readPartnerLogoAdjustment(form)
+        );
+      }
+    );
+  });
+
+  document
+    .getElementById("resetPartnerLogoPosition")
+    ?.addEventListener("click", () => {
+      form.elements.logo_scale.value = 100;
+      form.elements.logo_offset_x.value = 0;
+      form.elements.logo_offset_y.value = 0;
+
+      updatePartnerLogoControlLabels(form);
+
+      const file =
+        form.elements.logo_file.files?.[0];
+
+      const previewUrl = file
+        ? URL.createObjectURL(file)
+        : form.elements.existing_logo_url.value;
+
+      updatePartnerLogoPreview(
+        previewUrl,
+        form.elements.name.value,
+        readPartnerLogoAdjustment(form)
+      );
+    });
+}
+
 async function loadSettings() {
   const { data, error } = await client().from("site_settings").select("key,value");
   if (error) return notice(error.message, "error");
@@ -1801,4 +2954,5 @@ async function saveSettings(event) {
 }
 
 document.addEventListener("DOMContentLoaded", setupTeamAdmin);
+document.addEventListener("DOMContentLoaded", setupPartnerAdmin);
 document.addEventListener("DOMContentLoaded", initAdmin);

@@ -275,6 +275,65 @@ function activateStandingLogoFallbacks(root = document) {
     });
 }
 
+function standingMovementMarkup(row) {
+  const current = Number(row.position);
+  const previous =
+    Number(row.previous_position);
+
+  if (
+    !Number.isFinite(previous) ||
+    previous <= 0
+  ) {
+    return `
+      <span
+        class="standing-movement standing-movement--new"
+        title="New team"
+        aria-label="New team in the standings"
+      >
+        NEW
+      </span>
+    `;
+  }
+
+  const movement = previous - current;
+
+  if (movement > 0) {
+    return `
+      <span
+        class="standing-movement standing-movement--up"
+        title="Moved up ${movement}"
+        aria-label="Moved up ${movement} position${movement === 1 ? "" : "s"}"
+      >
+        ▲ ${movement}
+      </span>
+    `;
+  }
+
+  if (movement < 0) {
+    const amount = Math.abs(movement);
+
+    return `
+      <span
+        class="standing-movement standing-movement--down"
+        title="Moved down ${amount}"
+        aria-label="Moved down ${amount} position${amount === 1 ? "" : "s"}"
+      >
+        ▼ ${amount}
+      </span>
+    `;
+  }
+
+  return `
+    <span
+      class="standing-movement standing-movement--same"
+      title="No position change"
+      aria-label="No position change"
+    >
+      —
+    </span>
+  `;
+}
+
 async function renderStandings() {
   const mount = document.getElementById("standingsBody");
 
@@ -350,7 +409,10 @@ async function renderStandings() {
 
     return `
       <tr class="${isImperial ? "is-imperial" : ""}">
-        <td>${row.position}</td>
+        <td class="standing-position-cell">
+          <strong>${row.position}</strong>
+          ${standingMovementMarkup(row)}
+        </td>
 
         <td class="club-cell">
           ${standingTeamBadge(row.team_name, team)}
@@ -766,70 +828,825 @@ async function renderGallery() {
   observeReveal();
 }
 
+function homeMatchTeamBadge(
+  teamName,
+  team = null,
+  outline = false
+) {
+  const code = escapeHtml(
+    standingTeamCode(teamName, team)
+  );
+
+  const outlineClass =
+    outline ? " team-mark--outline" : "";
+
+  if (!team?.logo_url) {
+    return `
+      <span
+        class="team-mark home-match-team-mark${outlineClass}"
+      >
+        ${code}
+      </span>
+    `;
+  }
+
+  const scale = Math.min(
+    250,
+    Math.max(50, Number(team.logo_scale || 100))
+  );
+
+  const offsetX = Math.min(
+    40,
+    Math.max(-40, Number(team.logo_offset_x || 0))
+  );
+
+  const offsetY = Math.min(
+    40,
+    Math.max(-40, Number(team.logo_offset_y || 0))
+  );
+
+  return `
+    <span
+      class="
+        team-mark
+        home-match-team-mark
+        home-match-team-mark--logo
+        ${outlineClass}
+      "
+    >
+      <img
+        src="${escapeHtml(team.logo_url)}"
+        alt="${escapeHtml(team.team_name || teamName)} badge"
+        loading="lazy"
+        data-home-match-team-logo
+        style="
+          transform:
+            translate(${offsetX}%, ${offsetY}%)
+            scale(${scale / 100});
+        "
+      >
+
+      <span
+        class="home-match-team-mark__fallback"
+        hidden
+      >
+        ${code}
+      </span>
+    </span>
+  `;
+}
+
+function activateHomeMatchLogoFallbacks(
+  root = document
+) {
+  root
+    .querySelectorAll("[data-home-match-team-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          const fallback =
+            image.nextElementSibling;
+
+          if (fallback) {
+            fallback.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+}
+
+function resolveFixtureTeam(
+  teamId,
+  teamName,
+  teamsById,
+  teamsByName
+) {
+  return (
+    teamsById.get(String(teamId || "")) ||
+    teamsByName.get(
+      normaliseStandingTeamName(teamName)
+    ) ||
+    null
+  );
+}
+
+function fixtureCardDateTimeValue(item) {
+  const date = String(item?.match_date || "").trim();
+
+  if (!date) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const rawTime =
+    String(item?.kickoff_time || "").trim();
+
+  const time = rawTime
+    ? rawTime.slice(0, 8)
+    : "23:59:59";
+
+  const value = new Date(
+    `${date}T${time}`
+  ).getTime();
+
+  return Number.isFinite(value)
+    ? value
+    : Number.POSITIVE_INFINITY;
+}
+
+function fixtureCardShortDate(value) {
+  const date = String(value || "").trim();
+
+  if (!date) return "Date TBC";
+
+  const parsed = new Date(`${date}T12:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "Date TBC";
+  }
+
+  return parsed.toLocaleDateString(
+    "en-ZA",
+    {
+      day: "numeric",
+      month: "short"
+    }
+  );
+}
+
+function compareUpcomingFixtureCards(a, b) {
+  const now = Date.now();
+
+  const aTime = fixtureCardDateTimeValue(a);
+  const bTime = fixtureCardDateTimeValue(b);
+
+  const aIsPast =
+    Number.isFinite(aTime) && aTime < now;
+
+  const bIsPast =
+    Number.isFinite(bTime) && bTime < now;
+
+  // Confirmed future matches appear first.
+  if (aIsPast !== bIsPast) {
+    return aIsPast ? 1 : -1;
+  }
+
+  // Future matches: nearest first.
+  if (!aIsPast) {
+    return aTime - bTime;
+  }
+
+  // Past fixtures awaiting an update: newest first.
+  return bTime - aTime;
+}
+
+function fixtureCardResolveTeam(
+  teamId,
+  teamName,
+  teamsById,
+  teamsByName
+) {
+  return (
+    teamsById.get(String(teamId || "")) ||
+    teamsByName.get(
+      normaliseStandingTeamName(teamName)
+    ) ||
+    null
+  );
+}
+
+function fixtureCardTeamBadge(
+  teamName,
+  team = null
+) {
+  const code = escapeHtml(
+    standingTeamCode(teamName, team)
+  );
+
+  if (!team?.logo_url) {
+    return `
+      <span class="fixture-card-badge">
+        ${code}
+      </span>
+    `;
+  }
+
+  const scale = Math.min(
+    250,
+    Math.max(
+      50,
+      Number(team.logo_scale || 100)
+    )
+  );
+
+  const offsetX = Math.min(
+    40,
+    Math.max(
+      -40,
+      Number(team.logo_offset_x || 0)
+    )
+  );
+
+  const offsetY = Math.min(
+    40,
+    Math.max(
+      -40,
+      Number(team.logo_offset_y || 0)
+    )
+  );
+
+  return `
+    <span
+      class="
+        fixture-card-badge
+        fixture-card-badge--logo
+      "
+    >
+      <img
+        src="${escapeHtml(team.logo_url)}"
+        alt="${escapeHtml(
+          team.team_name || teamName
+        )} badge"
+        loading="lazy"
+        data-fixture-card-logo
+        style="
+          transform:
+            translate(${offsetX}%, ${offsetY}%)
+            scale(${scale / 100});
+        "
+      >
+
+      <span
+        class="fixture-card-badge__fallback"
+        hidden
+      >
+        ${code}
+      </span>
+    </span>
+  `;
+}
+
+function activateFixtureCardLogoFallbacks(
+  root = document
+) {
+  root
+    .querySelectorAll("[data-fixture-card-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          const fallback =
+            image.nextElementSibling;
+
+          if (fallback) {
+            fallback.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+}
+
+function fixtureCardTimeLabel(item) {
+  const status =
+    String(item?.status || "upcoming");
+
+  if (status === "result") {
+    return "FT";
+  }
+
+  if (status === "postponed") {
+    return "PPD";
+  }
+
+  if (status === "cancelled") {
+    return "CAN";
+  }
+
+  const timestamp =
+    fixtureCardDateTimeValue(item);
+
+  if (
+    Number.isFinite(timestamp) &&
+    timestamp < Date.now()
+  ) {
+    return "Awaiting update";
+  }
+
+  return formatMatchTime(item?.kickoff_time);
+}
+
 async function renderFixtures() {
-  const loading = document.getElementById("fixtureLoading");
-  const upcomingSection = document.querySelector("[data-fixture-upcoming-section]");
-  const resultsSection = document.querySelector("[data-fixture-results-section]");
-  const upcomingMount = document.getElementById("upcomingFixtureList");
-  const resultsMount = document.getElementById("resultFixtureList");
-  const homeMatch = document.getElementById("homeMatch");
-  if (!upcomingMount && !resultsMount && !homeMatch) return;
+  const loading =
+    document.getElementById("fixtureLoading");
+
+  const upcomingSection = document.querySelector(
+    "[data-fixture-upcoming-section]"
+  );
+
+  const resultsSection = document.querySelector(
+    "[data-fixture-results-section]"
+  );
+
+  const upcomingMount =
+    document.getElementById("upcomingFixtureList");
+
+  const resultsMount =
+    document.getElementById("resultFixtureList");
+
+  const homeMatch =
+    document.getElementById("homeMatch");
+
+  if (
+    !upcomingMount &&
+    !resultsMount &&
+    !homeMatch
+  ) {
+    return;
+  }
 
   const client = getCmsClient();
+
   if (!client) {
-    if (loading) loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
-    if (homeMatch) renderHomeMatch(null);
+    if (loading) {
+      loading.innerHTML = emptyState(
+        "Fixtures awaiting confirmation",
+        "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+      );
+    }
+
+    if (homeMatch) {
+      renderHomeMatch(null);
+    }
+
     return;
   }
 
-  const { data, error } = await client.from("fixtures").select("*").eq("published", true).order("match_date", { ascending: true });
-  if (error || !data?.length) {
-    if (loading) loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
-    if (homeMatch) renderHomeMatch(null);
+  const [fixturesResponse, teamsResponse] =
+    await Promise.all([
+      client
+        .from("fixtures")
+        .select("*")
+        .eq("published", true)
+        .order("match_date", {
+          ascending: true
+        }),
+
+      client
+        .from("teams")
+        .select(
+          "id,team_name,short_code,logo_url," +
+          "logo_scale,logo_offset_x,logo_offset_y," +
+          "is_home_club,published"
+        )
+        .eq("published", true)
+    ]);
+
+  const fixtures =
+    fixturesResponse.data || [];
+
+  const teams = teamsResponse.error
+    ? []
+    : teamsResponse.data || [];
+
+  if (teamsResponse.error) {
+    console.warn(
+      "Fixture team badges could not be loaded:",
+      teamsResponse.error
+    );
+  }
+
+  const teamsById = new Map(
+    teams.map(team => [
+      String(team.id),
+      team
+    ])
+  );
+
+  const teamsByName = new Map(
+    teams.map(team => [
+      normaliseStandingTeamName(
+        team.team_name
+      ),
+      team
+    ])
+  );
+
+  if (
+    fixturesResponse.error ||
+    !fixtures.length
+  ) {
+    if (loading) {
+      loading.innerHTML = emptyState(
+        "Fixtures awaiting confirmation",
+        "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+      );
+    }
+
+    if (homeMatch) {
+      renderHomeMatch(
+        null,
+        teamsById,
+        teamsByName
+      );
+    }
+
     return;
   }
 
-  const upcoming = data.filter(item => item.status !== "result").sort(compareFixtureDatesAscending);
-  const results = data.filter(item => item.status === "result").sort(compareFixtureDatesDescending);
-  if (homeMatch) renderHomeMatch(upcoming[0] || results[0] || null);
+  const upcoming = fixtures
+    .filter(item => item.status !== "result")
+    .sort(compareUpcomingFixtureCards);
 
-  if (!upcomingMount || !resultsMount) return;
-  if (loading) loading.hidden = true;
+  const results = fixtures
+    .filter(item => item.status === "result")
+    .sort(compareFixtureDatesDescending);
+
+  const now = Date.now();
+
+  const nextConfirmedFixture =
+    upcoming.find(item => {
+      return (
+        item.status === "upcoming" &&
+        fixtureCardDateTimeValue(item) >= now
+      );
+    });
+
+  if (homeMatch) {
+    renderHomeMatch(
+      nextConfirmedFixture ||
+        results[0] ||
+        null,
+      teamsById,
+      teamsByName
+    );
+  }
+
+  // Homepage only needs the Match Centre.
+  if (!upcomingMount || !resultsMount) {
+    return;
+  }
+
+  upcomingMount.classList.add(
+    "fixture-card-grid"
+  );
+
+  resultsMount.classList.add(
+    "fixture-card-grid"
+  );
+
+  if (loading) {
+    loading.hidden = true;
+  }
 
   if (upcoming.length) {
     upcomingSection?.removeAttribute("hidden");
-    upcomingMount.innerHTML = upcoming.map(renderFixtureRow).join("");
-  } else upcomingSection?.setAttribute("hidden", "");
+
+    upcomingMount.innerHTML = upcoming
+      .map(item => {
+        return renderFixtureRow(
+          item,
+          teamsById,
+          teamsByName
+        );
+      })
+      .join("");
+
+    activateFixtureCardLogoFallbacks(
+      upcomingMount
+    );
+  } else {
+    upcomingSection?.setAttribute(
+      "hidden",
+      ""
+    );
+  }
 
   if (results.length) {
     resultsSection?.removeAttribute("hidden");
-    resultsMount.innerHTML = results.map(renderFixtureRow).join("");
-  } else resultsSection?.setAttribute("hidden", "");
 
-  if (!upcoming.length && !results.length && loading) {
-    loading.hidden = false;
-    loading.innerHTML = emptyState("Fixtures awaiting confirmation", "Official dates, opponents, grounds and kick-off times will appear here once confirmed.");
+    resultsMount.innerHTML = results
+      .map(item => {
+        return renderFixtureRow(
+          item,
+          teamsById,
+          teamsByName
+        );
+      })
+      .join("");
+
+    activateFixtureCardLogoFallbacks(
+      resultsMount
+    );
+  } else {
+    resultsSection?.setAttribute(
+      "hidden",
+      ""
+    );
   }
+
+  if (
+    !upcoming.length &&
+    !results.length &&
+    loading
+  ) {
+    loading.hidden = false;
+
+    loading.innerHTML = emptyState(
+      "Fixtures awaiting confirmation",
+      "Official dates, opponents, grounds and kick-off times will appear here once confirmed."
+    );
+  }
+
   observeReveal();
 }
 
-function renderHomeMatch(item) {
-  const mount = document.getElementById("homeMatch");
+function renderHomeMatch(
+  item,
+  teamsById = new Map(),
+  teamsByName = new Map()
+) {
+  const mount =
+    document.getElementById("homeMatch");
+
   if (!mount) return;
+
   if (!item) {
-    mount.innerHTML = `<div class="match-date"><p class="eyebrow">Next match</p><strong>Date TBC</strong><span>MPL</span></div><div class="match-teams"><div><span class="team-mark">IAC</span><strong>Imperial AC</strong></div><span class="score-mark">VS</span><div><span class="team-mark team-mark--outline">OPP</span><strong>Opponent TBC</strong></div></div><div class="match-detail"><span>Kick-off TBC</span><span>Venue TBC</span></div>`;
+    mount.innerHTML = `
+      <div class="match-date">
+        <p class="eyebrow">Next match</p>
+        <strong>Date TBC</strong>
+        <span>MPL</span>
+      </div>
+
+      <div class="match-teams">
+        <div class="match-team-card">
+          <span
+            class="team-mark home-match-team-mark"
+          >
+            IAC
+          </span>
+
+          <strong class="home-match-team-name">
+            Imperial AC
+          </strong>
+        </div>
+
+        <span class="score-mark">VS</span>
+
+        <div class="match-team-card">
+          <span
+            class="
+              team-mark
+              team-mark--outline
+              home-match-team-mark
+            "
+          >
+            OPP
+          </span>
+
+          <strong class="home-match-team-name">
+            Opponent TBC
+          </strong>
+        </div>
+      </div>
+
+      <div class="match-detail">
+        <span>Kick-off TBC</span>
+        <span>Venue TBC</span>
+      </div>
+    `;
+
     return;
   }
-  const score = item.status === "result" ? `${item.home_score ?? "–"} : ${item.away_score ?? "–"}` : "VS";
-  mount.innerHTML = `<div class="match-date"><p class="eyebrow">${item.status === "result" ? "Latest result" : "Next match"}</p><strong>${escapeHtml(formatMatchDate(item.match_date))}</strong><span>${escapeHtml(item.competition || "MPL")}</span></div><div class="match-teams"><div><span class="team-mark">${initials(item.home_team)}</span><strong>${escapeHtml(item.home_team)}</strong></div><span class="score-mark">${score}</span><div><span class="team-mark team-mark--outline">${initials(item.away_team)}</span><strong>${escapeHtml(item.away_team)}</strong></div></div><div class="match-detail"><span>${escapeHtml(formatMatchTime(item.kickoff_time))}</span><span>${escapeHtml(item.venue || "Venue TBC")}</span></div>`;
+
+  const homeTeam = resolveFixtureTeam(
+    item.home_team_id,
+    item.home_team,
+    teamsById,
+    teamsByName
+  );
+
+  const awayTeam = resolveFixtureTeam(
+    item.away_team_id,
+    item.away_team,
+    teamsById,
+    teamsByName
+  );
+
+  const score =
+    item.status === "result"
+      ? `${item.home_score ?? "–"} : ${item.away_score ?? "–"}`
+      : "VS";
+
+  mount.innerHTML = `
+    <div class="match-date">
+      <p class="eyebrow">
+        ${
+          item.status === "result"
+            ? "Latest result"
+            : "Next match"
+        }
+      </p>
+
+      <strong>
+        ${escapeHtml(formatMatchDate(item.match_date))}
+      </strong>
+
+      <span>
+        ${escapeHtml(item.competition || "MPL")}
+      </span>
+    </div>
+
+    <div class="match-teams">
+      <div class="match-team-card">
+        ${homeMatchTeamBadge(
+          item.home_team,
+          homeTeam,
+          false
+        )}
+
+        <strong class="home-match-team-name">
+          ${escapeHtml(item.home_team)}
+        </strong>
+      </div>
+
+      <span class="score-mark">
+        ${escapeHtml(String(score))}
+      </span>
+
+      <div class="match-team-card">
+        ${homeMatchTeamBadge(
+          item.away_team,
+          awayTeam,
+          true
+        )}
+
+        <strong class="home-match-team-name">
+          ${escapeHtml(item.away_team)}
+        </strong>
+      </div>
+    </div>
+
+    <div class="match-detail">
+      <span>
+        ${escapeHtml(
+          formatMatchTime(item.kickoff_time)
+        )}
+      </span>
+
+      <span>
+        ${escapeHtml(item.venue || "Venue TBC")}
+      </span>
+    </div>
+  `;
+
+  activateHomeMatchLogoFallbacks(mount);
 }
 
-function renderFixtureRow(item) {
-  const status = item.status || "upcoming";
-  const score = status === "result" ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}` : status === "postponed" ? "PPD" : status === "cancelled" ? "CAN" : "VS";
-  const details = [item.competition || "MPL", formatMatchTime(item.kickoff_time)].filter(Boolean).map(escapeHtml).join(" • ");
-  const location = [item.venue, item.notes].filter(Boolean).map(escapeHtml).join(" • ") || "Venue TBC";
-  return `<article class="fixture-row reveal"><div class="fixture-date"><strong>${escapeHtml(formatMatchDate(item.match_date))}</strong><span>${details}</span></div><div class="fixture-teams"><span>${escapeHtml(item.home_team)}</span><strong>${score}</strong><span>${escapeHtml(item.away_team)}</span></div><div class="fixture-location">${location}</div></article>`;
+function renderFixtureRow(
+  item,
+  teamsById = new Map(),
+  teamsByName = new Map()
+) {
+  const status =
+    String(item.status || "upcoming");
+
+  const isResult =
+    status === "result";
+
+  const homeTeam = fixtureCardResolveTeam(
+    item.home_team_id,
+    item.home_team,
+    teamsById,
+    teamsByName
+  );
+
+  const awayTeam = fixtureCardResolveTeam(
+    item.away_team_id,
+    item.away_team,
+    teamsById,
+    teamsByName
+  );
+
+  const homeScore =
+    item.home_score ?? "–";
+
+  const awayScore =
+    item.away_score ?? "–";
+
+  const homeWon =
+    isResult &&
+    Number(item.home_score) >
+      Number(item.away_score);
+
+  const awayWon =
+    isResult &&
+    Number(item.away_score) >
+      Number(item.home_score);
+
+  const dateLabel =
+    fixtureCardShortDate(item.match_date);
+
+  const timeLabel =
+    fixtureCardTimeLabel(item);
+
+  const competition =
+    item.competition || "MPL";
+
+  const venue =
+    item.venue || "Venue TBC";
+
+  return `
+    <article
+      class="
+        fixture-google-card
+        fixture-google-card--${escapeHtml(status)}
+        reveal
+      "
+    >
+      <div class="fixture-google-card__main">
+        <div class="fixture-google-card__teams">
+          <div
+            class="
+              fixture-google-team
+              ${homeWon ? "is-winner" : ""}
+            "
+          >
+            ${fixtureCardTeamBadge(
+              item.home_team,
+              homeTeam
+            )}
+
+            <span class="fixture-google-team__name">
+              ${escapeHtml(item.home_team)}
+            </span>
+
+            ${
+              isResult
+                ? `
+                  <strong
+                    class="fixture-google-team__score"
+                  >
+                    ${escapeHtml(String(homeScore))}
+                  </strong>
+                `
+                : ""
+            }
+          </div>
+
+          <div
+            class="
+              fixture-google-team
+              ${awayWon ? "is-winner" : ""}
+            "
+          >
+            ${fixtureCardTeamBadge(
+              item.away_team,
+              awayTeam
+            )}
+
+            <span class="fixture-google-team__name">
+              ${escapeHtml(item.away_team)}
+            </span>
+
+            ${
+              isResult
+                ? `
+                  <strong
+                    class="fixture-google-team__score"
+                  >
+                    ${escapeHtml(String(awayScore))}
+                  </strong>
+                `
+                : ""
+            }
+          </div>
+        </div>
+
+        <div class="fixture-google-card__when">
+          <strong>
+            ${escapeHtml(dateLabel)}
+          </strong>
+
+          <span>
+            ${escapeHtml(timeLabel)}
+          </span>
+        </div>
+      </div>
+
+      <div class="fixture-google-card__footer">
+        <span>${escapeHtml(competition)}</span>
+        <span aria-hidden="true">•</span>
+        <span>${escapeHtml(venue)}</span>
+      </div>
+    </article>
+  `;
 }
 
 async function renderArticle() {
@@ -1096,3 +1913,264 @@ async function initialiseSite() {
 }
 
 document.addEventListener("DOMContentLoaded", initialiseSite);
+
+function publicPartnerInitials(name) {
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4) || "P";
+}
+
+function publicPartnerTransform(partner = {}) {
+  const scale = Math.min(
+    250,
+    Math.max(50, Number(partner.logo_scale) || 100)
+  );
+
+  const x = Math.min(
+    40,
+    Math.max(-40, Number(partner.logo_offset_x) || 0)
+  );
+
+  const y = Math.min(
+    40,
+    Math.max(-40, Number(partner.logo_offset_y) || 0)
+  );
+
+  return `translate(${x}%, ${y}%) scale(${scale / 100})`;
+}
+
+function publicPartnerLogo(partner) {
+  const fallback = escapeHtml(
+    publicPartnerInitials(partner.name)
+  );
+
+  if (!partner.logo_url) {
+    return `
+      <span class="public-partner-logo public-partner-logo--fallback">
+        ${fallback}
+      </span>
+    `;
+  }
+
+  return `
+    <span class="public-partner-logo">
+      <img
+        src="${escapeHtml(partner.logo_url)}"
+        alt="${escapeHtml(partner.name)} logo"
+        loading="lazy"
+        data-public-partner-logo
+        style="transform: ${publicPartnerTransform(partner)};"
+      >
+
+      <span
+        class="public-partner-logo__fallback"
+        hidden
+      >
+        ${fallback}
+      </span>
+    </span>
+  `;
+}
+
+function activatePublicPartnerFallbacks(root = document) {
+  root
+    .querySelectorAll("[data-public-partner-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          const fallback = image.nextElementSibling;
+
+          if (fallback) {
+            fallback.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+}
+
+function findOrCreatePartnerMount() {
+  const isPartnersPage =
+    document.body?.dataset.page === "partners";
+
+  if (!isPartnersPage) {
+    return document.querySelector(".partner-logos");
+  }
+
+  let mount =
+    document.getElementById("partnerList") ||
+    document.querySelector(
+      "[data-partner-list], .partners-grid"
+    );
+
+  if (mount) {
+    mount.id = "partnerList";
+    mount.classList.add("public-partner-grid");
+    return mount;
+  }
+
+  const main = document.querySelector("main");
+
+  if (!main) return null;
+
+  const section = document.createElement("section");
+  section.className = "section";
+
+  section.innerHTML = `
+    <div class="container">
+      <div
+        class="public-partner-grid"
+        id="partnerList"
+      ></div>
+    </div>
+  `;
+
+  main.appendChild(section);
+
+  return section.querySelector("#partnerList");
+}
+
+async function renderPublicPartners() {
+  const isPartnersPage =
+    document.body?.dataset.page === "partners";
+
+  const mount = findOrCreatePartnerMount();
+
+  if (!mount) return;
+
+  const client = getCmsClient();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("partners")
+    .select(
+      "id,name,logo_url,website_url," +
+      "display_order,published," +
+      "logo_scale,logo_offset_x,logo_offset_y"
+    )
+    .eq("published", true)
+    .order("display_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Partners could not be loaded:", error);
+    return;
+  }
+
+  const partners = data || [];
+
+  if (!isPartnersPage) {
+    const homepagePartners = partners.slice(0, 4);
+
+    const slots = Array.from(
+      { length: 4 },
+      (_, index) => {
+        const partner = homepagePartners[index];
+
+        if (!partner) {
+          return `
+            <div class="partner-logo-slot">
+              Partner ${String(index + 1).padStart(2, "0")}
+            </div>
+          `;
+        }
+
+        const contents = `
+          ${publicPartnerLogo(partner)}
+
+          <span class="partner-logo-slot__name">
+            ${escapeHtml(partner.name)}
+          </span>
+        `;
+
+        if (partner.website_url) {
+          return `
+            <a
+              class="partner-logo-slot partner-logo-slot--live"
+              href="${escapeHtml(partner.website_url)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit ${escapeHtml(partner.name)}"
+            >
+              ${contents}
+            </a>
+          `;
+        }
+
+        return `
+          <div
+            class="partner-logo-slot partner-logo-slot--live"
+          >
+            ${contents}
+          </div>
+        `;
+      }
+    );
+
+    mount.innerHTML = slots.join("");
+    activatePublicPartnerFallbacks(mount);
+    return;
+  }
+
+  if (!partners.length) {
+    mount.innerHTML = `
+      <div class="partner-public-empty">
+        Partner announcements will appear here.
+      </div>
+    `;
+    return;
+  }
+
+  mount.innerHTML = partners.map(partner => {
+    const content = `
+      ${publicPartnerLogo(partner)}
+
+      <span class="public-partner-name">
+        ${escapeHtml(partner.name)}
+      </span>
+
+      ${
+        partner.website_url
+          ? '<span class="public-partner-link">Visit website ↗</span>'
+          : ""
+      }
+    `;
+
+    if (partner.website_url) {
+      return `
+        <a
+          class="public-partner-card"
+          href="${escapeHtml(partner.website_url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Visit ${escapeHtml(partner.name)}"
+        >
+          ${content}
+        </a>
+      `;
+    }
+
+    return `
+      <article class="public-partner-card">
+        ${content}
+      </article>
+    `;
+  }).join("");
+
+  activatePublicPartnerFallbacks(mount);
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  renderPublicPartners
+);

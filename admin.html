@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260725-18" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js?v=20260722-12"></script></head><body class="admin-body">
+<html lang="en"><head><title>Club Dashboard | Imperial AC</title><meta content="Private Imperial AC content dashboard." name="description"/><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="assets/logo-mark.svg" rel="icon" type="image/svg+xml"/><link href="css/styles.css?v=20260725-37" rel="stylesheet"/><script defer="" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer="" src="js/cms-config.js"></script><script defer="" src="js/admin.js?v=20260725-31"></script></head><body class="admin-body">
 <header class="admin-topbar admin-topbar--logged-out" id="adminTopbar"><a class="brand" href="index.html"><img alt="Imperial AC crest" src="assets/logo-mark.svg"/><span><strong>Imperial AC</strong><small>Club Dashboard</small></span></a><div class="admin-topbar-actions" hidden="" id="adminTopbarActions"><a href="index.html">View website</a><button class="button button--line" id="logoutButton" type="button">Sign out</button></div></header>
 <main>
 <section class="setup-card" id="configRequired"><p class="eyebrow">Setup required</p><h1>Connect the live content database.</h1><p>Open CMS-SETUP.md, create the Supabase project, run the included SQL, and paste the project URL and publishable key into js/cms-config.js.</p><code>js/cms-config.js</code></section>
 <div hidden="" id="authArea"><section class="login-card" id="loginPanel"><p class="eyebrow">Private access</p><h1>Club dashboard login</h1><p>Use the administrator account created in Supabase Authentication.</p><form id="loginForm"><div class="field"><label for="loginEmail">Email</label><input autocomplete="email" id="loginEmail" name="email" required="" type="email"/></div><div class="field"><label for="loginPassword">Password</label><input autocomplete="current-password" id="loginPassword" name="password" required="" type="password"/></div><button class="button button--blue" type="submit">Sign in</button></form></section>
-<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="teams" type="button">Teams &amp; Logos</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
+<section class="admin-shell" hidden="" id="dashboard"><aside class="admin-sidebar"><p>Workspace</p><button class="active" data-admin-tab="overview" type="button">Overview</button><button data-admin-tab="standings" type="button">Standings</button><button data-admin-tab="teams" type="button">Teams &amp; Logos</button><button data-admin-tab="fixtures" type="button">Fixtures</button><button data-admin-tab="news" type="button">News</button><button data-admin-tab="gallery" type="button">Gallery</button><button data-admin-tab="partners" type="button">Partners</button><button data-admin-tab="visibility" type="button">Visibility</button><button data-admin-tab="compliance" type="button">Compliance</button></aside><div class="admin-main"><header class="admin-main-header"><div><p class="eyebrow">Private dashboard</p><h1>Manage live club content.</h1><p>Signed in as <strong id="loggedInEmail"></strong></p></div></header>
 <section class="admin-panel" data-admin-panel="overview"><div class="admin-section-head"><div><h2>Overview</h2><p>A quick view of the content currently in the CMS.</p></div></div><div class="admin-stat-grid"><div class="admin-stat"><span>Teams in standings</span><strong id="countStandings">0</strong></div><div class="admin-stat"><span>Fixtures and results</span><strong id="countFixtures">0</strong></div><div class="admin-stat"><span>News posts</span><strong id="countNews">0</strong></div><div class="admin-stat"><span>News groups</span><strong id="countNewsGroups">0</strong></div><div class="admin-stat"><span>Gallery items</span><strong id="countGallery">0</strong></div></div></section>
 <section class="admin-panel" data-admin-panel="standings" hidden=""><div class="admin-section-head"><div><h2>Standings editor</h2><p>Choose registered teams from Teams & Logos. Team names can only be edited from the team directory.</p></div><button class="button button--line" id="addStandingRow" type="button">Add team</button></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th></th></tr></thead><tbody id="standingEditorBody"></tbody></table></div><div class="admin-actions"><button class="primary" id="saveStandings" type="button">Save standings live</button></div></div></section>
 <section class="admin-panel" data-admin-panel="teams" hidden="">
@@ -171,7 +171,11 @@
   <div class="admin-list" id="teamAdminList">
     <div class="admin-empty">Open this section to load teams.</div>
   </div>
-</section><section class="admin-panel" data-admin-panel="fixtures" hidden=""><form class="admin-card" id="fixtureForm"><input name="id" type="hidden"/><div class="admin-card-header"><h2>Create or edit fixture</h2><p>Use Result only after the final score is confirmed.</p></div><div class="admin-form-grid"><div class="field"><label>Competition</label><input name="competition" required="" value="MPL"/></div><div class="field"><label>Status</label><select name="status"><option value="upcoming">Upcoming</option><option value="result">Result</option><option value="postponed">Postponed</option><option value="cancelled">Cancelled</option></select></div><div class="field"><label>Match date</label><input name="match_date" type="date"/></div><div class="field"><label>Kick-off time</label><input name="kickoff_time" type="time"/></div><div class="field"><label>Home team</label><input name="home_team" required=""/></div><div class="field"><label>Away team</label><input name="away_team" required=""/></div><div class="field"><label>Home score</label><input min="0" name="home_score" type="number"/></div><div class="field"><label>Away score</label><input min="0" name="away_score" type="number"/></div><div class="field field--wide"><label>Venue</label><input name="venue"/></div><div class="field field--wide"><label>Notes</label><textarea name="notes"></textarea></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish on the website</label></div><div class="admin-actions"><button class="primary" type="submit">Save fixture</button><button id="resetFixtureForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Existing fixtures</h2></div><div class="admin-list" id="fixtureAdminList"></div></section>
+</section><section class="admin-panel" data-admin-panel="fixtures" hidden=""><form class="admin-card" id="fixtureForm"><input name="id" type="hidden"/><div class="admin-card-header"><h2>Create or edit fixture</h2><p>Use Result only after the final score is confirmed.</p></div><div class="admin-form-grid"><div class="field"><label>Competition</label><input name="competition" required="" value="MPL"/></div><div class="field"><label>Status</label><select name="status"><option value="upcoming">Upcoming</option><option value="result">Result</option><option value="postponed">Postponed</option><option value="cancelled">Cancelled</option></select></div><div class="field"><label>Match date</label><input name="match_date" type="date"/></div><div class="field"><label>Kick-off time</label><input name="kickoff_time" type="time"/></div><div class="field"><label>Home team</label><select name="home_team_id" required>
+  <option value="">Select home team</option>
+</select></div><div class="field"><label>Away team</label><select name="away_team_id" required>
+  <option value="">Select away team</option>
+</select></div><div class="field"><label>Home score</label><input min="0" name="home_score" type="number"/></div><div class="field"><label>Away score</label><input min="0" name="away_score" type="number"/></div><div class="field field--wide"><label>Venue</label><input name="venue"/></div><div class="field field--wide"><label>Notes</label><textarea name="notes"></textarea></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish on the website</label></div><div class="admin-actions"><button class="primary" type="submit">Save fixture</button><button id="resetFixtureForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Existing fixtures</h2></div><div class="admin-list" id="fixtureAdminList"></div></section>
 <section class="admin-panel" data-admin-panel="news" hidden="">
 <div class="admin-section-head">
 <div>
@@ -280,7 +284,172 @@
 <div class="admin-list" id="newsAdminList"></div>
 </section>
 <section class="admin-panel" data-admin-panel="gallery" hidden=""><form class="admin-card" id="galleryForm"><input id="galleryId" name="id" type="hidden"/><div class="admin-card-header"><h2>Add or edit gallery image</h2></div><div class="admin-form-grid"><div class="field"><label>Title</label><input name="title"/></div><div class="field"><label>Category</label><input name="category" value="Club"/></div><div class="field"><label>Upload image</label><input accept="image/*" name="image_file" type="file"/></div><div class="field"><label>Display order</label><input name="display_order" type="number" value="0"/></div><div class="field field--wide"><label>Or image URL</label><input name="image_url" type="url"/></div><label class="checkbox-row field--wide"><input checked="" name="published" type="checkbox"/> Publish now</label></div><div class="admin-actions"><button class="primary" type="submit">Save image</button><button id="resetGalleryForm" type="button">Clear form</button></div></form><div class="admin-section-head"><h2>Gallery items</h2></div><div class="admin-list" id="galleryAdminList"></div></section>
-<section class="admin-panel" data-admin-panel="visibility" hidden=""><form class="admin-card" id="settingsForm"><div class="admin-card-header"><h2>Public page visibility</h2><p>Fixtures remain visible and show an awaiting-confirmation message when empty. News and Gallery stay hidden until you turn them on.</p></div><div class="visibility-grid"><label class="visibility-option"><span><strong>Standings</strong><span>Show the live MPL table in navigation.</span></span><span class="switch"><input id="showStandings" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>News</strong><span>Show the News page in navigation and on the homepage.</span></span><span class="switch"><input id="showNews" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Gallery</strong><span>Show the Gallery page in navigation.</span></span><span class="switch"><input id="showGallery" type="checkbox"/><i></i></span></label></div><div class="admin-actions"><button class="primary" type="submit">Save visibility</button></div></form></section>
+<section class="admin-panel" data-admin-panel="partners" hidden="">
+  <form class="admin-card" id="partnerForm">
+    <input id="partnerId" name="id" type="hidden">
+    <input
+      id="partnerExistingLogo"
+      name="existing_logo_url"
+      type="hidden"
+    >
+
+    <div class="admin-card-header">
+      <h2>Add or edit a partner</h2>
+      <p>
+        Upload the organisation's logo and add an optional
+        website link.
+      </p>
+    </div>
+
+    <div class="partner-editor-layout">
+      <div
+        class="partner-logo-preview"
+        id="partnerLogoPreview"
+      >
+        <span>LOGO</span>
+      </div>
+
+      <div class="admin-form-grid">
+        <div class="field field--wide">
+          <label>Partner name</label>
+          <input
+            maxlength="120"
+            name="name"
+            placeholder="Partner organisation"
+            required
+          >
+        </div>
+
+        <div class="field field--wide">
+          <label>Partner website</label>
+          <input
+            name="website_url"
+            placeholder="https://example.com"
+            type="text"
+          >
+          <small>
+            Visitors will open this link by clicking the logo.
+          </small>
+        </div>
+
+        <div class="field">
+          <label>Upload logo</label>
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            name="logo_file"
+            type="file"
+          >
+          <small>PNG, JPG or WebP. Maximum 2 MB.</small>
+        </div>
+
+        <div class="field">
+          <label>Display order</label>
+          <input
+            min="0"
+            name="display_order"
+            type="number"
+            value="0"
+          >
+        </div>
+
+        <div class="field field--wide partner-logo-controls">
+          <div class="partner-logo-control">
+            <label for="partnerLogoScale">
+              Logo size
+              <strong data-partner-scale-label>
+                100%
+              </strong>
+            </label>
+
+            <input
+              id="partnerLogoScale"
+              max="250"
+              min="50"
+              name="logo_scale"
+              type="range"
+              value="100"
+            >
+          </div>
+
+          <div class="partner-logo-control">
+            <label for="partnerLogoOffsetX">
+              Move left or right
+              <strong data-partner-x-label>
+                0
+              </strong>
+            </label>
+
+            <input
+              id="partnerLogoOffsetX"
+              max="40"
+              min="-40"
+              name="logo_offset_x"
+              type="range"
+              value="0"
+            >
+          </div>
+
+          <div class="partner-logo-control">
+            <label for="partnerLogoOffsetY">
+              Move up or down
+              <strong data-partner-y-label>
+                0
+              </strong>
+            </label>
+
+            <input
+              id="partnerLogoOffsetY"
+              max="40"
+              min="-40"
+              name="logo_offset_y"
+              type="range"
+              value="0"
+            >
+          </div>
+
+          <button
+            class="partner-logo-reset"
+            id="resetPartnerLogoPosition"
+            type="button"
+          >
+            Reset logo appearance
+          </button>
+        </div>
+
+        <label class="checkbox-row field--wide">
+          <input checked name="published" type="checkbox">
+          Show this partner publicly
+        </label>
+      </div>
+    </div>
+
+    <div class="admin-actions">
+      <button class="primary" type="submit">
+        Save partner
+      </button>
+
+      <button id="resetPartnerForm" type="button">
+        Clear form
+      </button>
+    </div>
+  </form>
+
+  <div class="admin-section-head">
+    <div>
+      <h2>Existing partners</h2>
+      <p>
+        Edit links and logos, change their order or hide them
+        from the website.
+      </p>
+    </div>
+  </div>
+
+  <div class="admin-list" id="partnerAdminList">
+    <div class="admin-empty">
+      Open this section to load partners.
+    </div>
+  </div>
+</section><section class="admin-panel" data-admin-panel="visibility" hidden=""><form class="admin-card" id="settingsForm"><div class="admin-card-header"><h2>Public page visibility</h2><p>Fixtures remain visible and show an awaiting-confirmation message when empty. News and Gallery stay hidden until you turn them on.</p></div><div class="visibility-grid"><label class="visibility-option"><span><strong>Standings</strong><span>Show the live MPL table in navigation.</span></span><span class="switch"><input id="showStandings" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>News</strong><span>Show the News page in navigation and on the homepage.</span></span><span class="switch"><input id="showNews" type="checkbox"/><i></i></span></label><label class="visibility-option"><span><strong>Gallery</strong><span>Show the Gallery page in navigation.</span></span><span class="switch"><input id="showGallery" type="checkbox"/><i></i></span></label></div><div class="admin-actions"><button class="primary" type="submit">Save visibility</button></div></form></section>
 <section class="admin-panel" data-admin-panel="compliance" hidden="">
 <div class="admin-section-head">
 <div>
