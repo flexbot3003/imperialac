@@ -3575,3 +3575,64 @@ CSScat >> css/styles.css <<'CSS'
   border-color: var(--blue);
   background: var(--blue);
 }
+
+/* Safe standings editing */
+.admin-section-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.standings-clear-button {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: #ffffff;
+}
+
+.standings-clear-button:hover {
+  color: #ffffff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.standing-team-cell {
+  min-width: 210px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+#standingEditorBody select.team--locked {
+  pointer-events: none;
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+  cursor: default;
+  user-select: none;
+}
+
+.standing-team-cell__lock {
+  padding: 6px 8px;
+  color: var(--blue);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--blue-pale);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .admin-section-head__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .admin-section-head__actions button {
+    flex: 1;
+  }
+}
