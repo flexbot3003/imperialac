@@ -438,7 +438,6 @@ async function initAdmin() {
   document.querySelectorAll("[data-admin-tab]").forEach(button => button.addEventListener("click", () => showTab(button.dataset.adminTab)));
   document.getElementById("addStandingRow").addEventListener("click", addStandingRow);
   document.getElementById("saveStandings").addEventListener("click", saveStandings);
-  document.getElementById("clearStandingStats")?.addEventListener("click", clearStandingStats);
   document.getElementById("fixtureForm").addEventListener("submit", saveFixture);
   document.getElementById("resetFixtureForm").addEventListener("click", resetFixtureForm);
   document.getElementById("newsGroupForm").addEventListener("submit", saveNewsGroup);
@@ -680,126 +679,6 @@ function standingTeamOptions(row = {}) {
 }
 
 function standingRow(row = {}) {
-  const teamLocked = Boolean(row.id);
-
-  const lockedTeamId =
-    String(row.team_id || "");
-
-  return `
-    <tr data-id="${esc(row.id || "")}">
-      <td class="standing-auto-position">
-        <span
-          class="pos-display"
-          aria-label="Automatic league position"
-        >
-          ${row.position ?? currentStandings.length + 1}
-        </span>
-      </td>
-
-      <td>
-        <div class="standing-team-cell">
-          <select
-            class="team${teamLocked
-              ? " team--locked"
-              : ""}"
-            ${teamLocked
-              ? `
-                data-locked-team-id="${esc(
-                  lockedTeamId
-                )}"
-                aria-disabled="true"
-                tabindex="-1"
-                title="Club name locked. Edit it under Teams & Logos."
-              `
-              : ""}
-            required
-          >
-            ${standingTeamOptions(row)}
-          </select>
-
-          ${teamLocked
-            ? `
-              <span
-                class="standing-team-cell__lock"
-                title="Club name locked"
-              >
-                Locked
-              </span>
-            `
-            : ""}
-        </div>
-      </td>
-
-      <td class="standing-auto-stat p">
-        ${row.played ?? 0}
-      </td>
-
-      <td>
-        <input
-          class="w"
-          type="number"
-          min="0"
-          value="${row.won ?? 0}"
-        >
-      </td>
-
-      <td>
-        <input
-          class="d"
-          type="number"
-          min="0"
-          value="${row.drawn ?? 0}"
-        >
-      </td>
-
-      <td>
-        <input
-          class="l"
-          type="number"
-          min="0"
-          value="${row.lost ?? 0}"
-        >
-      </td>
-
-      <td>
-        <input
-          class="gf"
-          type="number"
-          min="0"
-          value="${row.goals_for ?? 0}"
-        >
-      </td>
-
-      <td>
-        <input
-          class="ga"
-          type="number"
-          min="0"
-          value="${row.goals_against ?? 0}"
-        >
-      </td>
-
-      <td class="standing-auto-stat gd">
-        ${row.goal_difference ?? 0}
-      </td>
-
-      <td class="standing-auto-stat pts">
-        ${row.points ?? 0}
-      </td>
-
-      <td>
-        <button
-          class="icon-button danger"
-          type="button"
-          data-delete-standing
-          aria-label="Delete team"
-        >
-          ×
-        </button>
-      </td>
-    </tr>
-  `;
-}) {
   return `
     <tr data-id="${esc(row.id || "")}">
       <td class="standing-auto-position">
@@ -911,67 +790,6 @@ function addStandingRow() {
   });
 
   renderStandingEditor();
-}
-
-async function clearStandingStats() {
-  const editorRows = [
-    ...document.querySelectorAll(
-      "#standingEditorBody tr"
-    )
-  ];
-
-  if (!editorRows.length) {
-    notice(
-      "There are no standings rows to clear.",
-      "error"
-    );
-
-    return;
-  }
-
-  const confirmed = await adminConfirm(
-    "Reset Played, Wins, Draws, Losses, Goals For, Goals Against, Goal Difference and Points to zero for every club? Club names will remain unchanged and locked.",
-    {
-      title: "Clear all standings stats",
-      confirmLabel: "Clear all stats",
-      tone: "danger"
-    }
-  );
-
-  if (!confirmed) return;
-
-  editorRows.forEach((row, index) => {
-    ["w", "d", "l", "gf", "ga"].forEach(
-      className => {
-        const input =
-          row.querySelector(`.${className}`);
-
-        if (input) {
-          input.value = "0";
-        }
-      }
-    );
-
-    if (currentStandings[index]) {
-      currentStandings[index] = {
-        ...currentStandings[index],
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        goals_for: 0,
-        goals_against: 0,
-        goal_difference: 0,
-        points: 0
-      };
-    }
-  });
-
-  recalculateStandingRows();
-
-  notice(
-    "All standings stats were cleared in the editor. Press Save standings live to publish the reset."
-  );
 }
 
 function recalculateStandingRows() {
