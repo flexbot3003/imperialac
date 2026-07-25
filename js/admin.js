@@ -158,19 +158,251 @@ function finishGalleryUploadFeedback(message, type) {
   );
 }
 
+function hideAdminTaskToast() {
+  const toast =
+    document.getElementById("adminTaskToast");
+
+  clearTimeout(showAdminTaskToast.hideTimer);
+
+  if (toast) {
+    toast.hidden = true;
+  }
+}
+
+function adminRequestTimeout(
+  promise,
+  milliseconds = 12000
+) {
+  let timer;
+
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new Error(
+          "The database check took too long. Please try again."
+        )
+      );
+    }, milliseconds);
+  });
+
+  return Promise.race([
+    Promise.resolve(promise).finally(() => {
+      clearTimeout(timer);
+    }),
+    timeout
+  ]);
+}
+
+function getAdminDialog() {
+  let dialog =
+    document.getElementById("adminActionDialog");
+
+  if (dialog) return dialog;
+
+  dialog = document.createElement("dialog");
+  dialog.id = "adminActionDialog";
+  dialog.className = "admin-action-dialog";
+
+  dialog.innerHTML = `
+    <div class="admin-action-dialog__panel">
+      <div class="admin-action-dialog__header">
+        <div>
+          <span class="admin-action-dialog__eyebrow">
+            Imperial AC Admin
+          </span>
+
+          <h2 data-admin-dialog-title>
+            Confirm action
+          </h2>
+        </div>
+
+        <button
+          class="admin-action-dialog__close"
+          type="button"
+          data-admin-dialog-close
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <p
+        class="admin-action-dialog__message"
+        data-admin-dialog-message
+      ></p>
+
+      <div class="admin-action-dialog__actions">
+        <button
+          class="admin-action-dialog__cancel"
+          type="button"
+          data-admin-dialog-cancel
+        >
+          Cancel
+        </button>
+
+        <button
+          class="admin-action-dialog__confirm"
+          type="button"
+          data-admin-dialog-confirm
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  return dialog;
+}
+
+function openAdminDialog({
+  title = "Confirm action",
+  message = "",
+  confirmLabel = "Continue",
+  cancelLabel = "Cancel",
+  tone = "danger",
+  showCancel = true
+} = {}) {
+  return new Promise(resolve => {
+    const dialog = getAdminDialog();
+
+    const titleElement = dialog.querySelector(
+      "[data-admin-dialog-title]"
+    );
+
+    const messageElement = dialog.querySelector(
+      "[data-admin-dialog-message]"
+    );
+
+    const confirmButton = dialog.querySelector(
+      "[data-admin-dialog-confirm]"
+    );
+
+    const cancelButton = dialog.querySelector(
+      "[data-admin-dialog-cancel]"
+    );
+
+    const closeButton = dialog.querySelector(
+      "[data-admin-dialog-close]"
+    );
+
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    confirmButton.textContent = confirmLabel;
+    cancelButton.textContent = cancelLabel;
+
+    dialog.dataset.tone = tone;
+    cancelButton.hidden = !showCancel;
+
+    let settled = false;
+
+    const finish = value => {
+      if (settled) return;
+
+      settled = true;
+
+      confirmButton.onclick = null;
+      cancelButton.onclick = null;
+      closeButton.onclick = null;
+      dialog.onclick = null;
+
+      dialog.removeEventListener(
+        "cancel",
+        handleCancel
+      );
+
+      if (dialog.open) {
+        dialog.close();
+      }
+
+      resolve(value);
+    };
+
+    const handleCancel = event => {
+      event.preventDefault();
+      finish(false);
+    };
+
+    confirmButton.onclick = () => finish(true);
+    cancelButton.onclick = () => finish(false);
+    closeButton.onclick = () => finish(false);
+
+    dialog.onclick = event => {
+      if (event.target === dialog) {
+        finish(false);
+      }
+    };
+
+    dialog.addEventListener(
+      "cancel",
+      handleCancel
+    );
+
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute("open", "");
+    }
+
+    window.setTimeout(
+      () => confirmButton.focus(),
+      30
+    );
+  });
+}
+
+function adminConfirm(message, options = {}) {
+  return openAdminDialog({
+    title: options.title || "Confirm deletion",
+    message,
+    confirmLabel:
+      options.confirmLabel || "Delete",
+    cancelLabel:
+      options.cancelLabel || "Cancel",
+    tone: options.tone || "danger",
+    showCancel: true
+  });
+}
+
+function adminAlert(message, options = {}) {
+  return openAdminDialog({
+    title: options.title || "Admin notice",
+    message,
+    confirmLabel:
+      options.confirmLabel || "Okay",
+    tone: options.tone || "info",
+    showCancel: false
+  });
+}
+
 function notice(message, type = "success") {
-  const element = document.getElementById("adminNotice");
-  element.textContent = message;
-  element.className = `admin-notice show ${type}`;
-  clearTimeout(notice.timer);
-  notice.timer = setTimeout(
-    () => element.classList.remove("show"),
-    5000
-  );
+  const oldNotice =
+    document.getElementById("adminNotice");
+
+  if (oldNotice) {
+    oldNotice.hidden = true;
+    oldNotice.className = "admin-notice";
+    oldNotice.textContent = "";
+  }
 
   if (activeGalleryUploadForm) {
-    finishGalleryUploadFeedback(message, type);
+    finishGalleryUploadFeedback(
+      message,
+      type
+    );
+
+    return;
   }
+
+  showAdminTaskToast(
+    message,
+    type === "error" ? "error" : "success",
+    {
+      duration:
+        type === "error" ? 7000 : 4500
+    }
+  );
 }
 
 function esc(value = "") {
@@ -784,7 +1016,7 @@ async function deleteStanding(button) {
   const row = button.closest("tr");
   const id = row.dataset.id;
   if (!id) { row.remove(); return; }
-  if (!confirm("Delete this team from the table?")) return;
+  if (!(await adminConfirm("Delete this team from the table?"))) return;
   const { error } = await client().from("standings").delete().eq("id", id);
   if (error) return notice(error.message, "error");
   notice("Team removed.");
@@ -1258,7 +1490,7 @@ async function saveFixture(event) {
 }
 
 async function deleteFixture(id) {
-  if (!confirm("Delete this fixture or result?")) return;
+  if (!(await adminConfirm("Delete this fixture or result?"))) return;
   const { error } = await client().from("fixtures").delete().eq("id", id);
   if (error) return notice(error.message, "error");
   notice("Fixture deleted.");
@@ -1404,7 +1636,7 @@ async function deleteNewsGroup(id) {
   const message = postCount
     ? `Delete "${group.name}"? ${postCount} assigned ${postCount === 1 ? "story" : "stories"} will move to Uncategorised.`
     : `Delete "${group.name}"?`;
-  if (!confirm(message)) return;
+  if (!(await adminConfirm(message))) return;
 
   const { error: postError } = await client()
     .from("news_posts")
@@ -1534,7 +1766,7 @@ async function saveNews(event) {
 }
 
 async function deleteNews(id) {
-  if (!confirm("Delete this news post?")) return;
+  if (!(await adminConfirm("Delete this news post?"))) return;
   const { error } = await client().from("news_posts").delete().eq("id", id);
   if (error) return notice(error.message, "error");
   notice("News post deleted.");
@@ -1650,7 +1882,7 @@ async function saveGallery(event) {
   resetGalleryForm();
   await loadGallery();
 }
-async function deleteGallery(id) { if (!confirm("Delete this gallery item?")) return; const { error } = await client().from("gallery_items").delete().eq("id", id); if (error) return notice(error.message, "error"); notice("Gallery item deleted."); await loadGallery(); }
+async function deleteGallery(id) { if (!(await adminConfirm("Delete this gallery item?"))) return; const { error } = await client().from("gallery_items").delete().eq("id", id); if (error) return notice(error.message, "error"); notice("Gallery item deleted."); await loadGallery(); }
 
 async function uploadFile(file, folder) {
   const extension = file.name.split(".").pop().toLowerCase();
@@ -2138,27 +2370,178 @@ async function saveTeam(event) {
 }
 
 async function deleteTeam(id) {
-  const team = currentTeams.find(item => item.id === id);
-  if (!team) return;
+  const team = currentTeams.find(
+    item => String(item.id) === String(id)
+  );
 
-  if (team.is_home_club) {
+  if (!team) {
     return notice(
-      "Imperial Athletic Club cannot be deleted.",
+      "The selected team could not be found.",
       "error"
     );
   }
 
-  if (!confirm(`Delete ${team.team_name}?`)) return;
+  if (team.is_home_club) {
+    hideAdminTaskToast();
 
-  const { error } = await client()
-    .from("teams")
-    .delete()
-    .eq("id", id);
+    await adminAlert(
+      "Imperial Athletic Club is the protected home club and cannot be deleted.",
+      {
+        title: "Home club protected",
+        tone: "info"
+      }
+    );
 
-  if (error) return notice(error.message, "error");
+    return;
+  }
 
-  notice("Team removed.");
-  await loadTeams();
+  showAdminTaskToast(
+    `Checking whether ${team.team_name} is still being used…`,
+    "loading",
+    { persistent: true }
+  );
+
+  try {
+    /*
+      Query home fixtures and away fixtures separately.
+      This avoids the PostgREST OR query that was hanging.
+    */
+    const [
+      standingsResponse,
+      homeFixturesResponse,
+      awayFixturesResponse
+    ] = await adminRequestTimeout(
+      Promise.all([
+        client()
+          .from("standings")
+          .select("id", {
+            count: "exact",
+            head: true
+          })
+          .eq("team_id", id),
+
+        client()
+          .from("fixtures")
+          .select("id", {
+            count: "exact",
+            head: true
+          })
+          .eq("home_team_id", id),
+
+        client()
+          .from("fixtures")
+          .select("id", {
+            count: "exact",
+            head: true
+          })
+          .eq("away_team_id", id)
+      ])
+    );
+
+    const queryError =
+      standingsResponse.error ||
+      homeFixturesResponse.error ||
+      awayFixturesResponse.error;
+
+    if (queryError) {
+      throw new Error(queryError.message);
+    }
+
+    const standingsCount =
+      Number(standingsResponse.count || 0);
+
+    const fixtureCount =
+      Number(homeFixturesResponse.count || 0) +
+      Number(awayFixturesResponse.count || 0);
+
+    const usedInStandings =
+      standingsCount > 0;
+
+    const usedInFixtures =
+      fixtureCount > 0;
+
+    hideAdminTaskToast();
+
+    if (usedInStandings || usedInFixtures) {
+      const references = [];
+
+      if (usedInStandings) {
+        references.push("the league standings");
+      }
+
+      if (usedInFixtures) {
+        references.push(
+          `${fixtureCount} fixture${
+            fixtureCount === 1 ? "" : "s"
+          } or result${
+            fixtureCount === 1 ? "" : "s"
+          }`
+        );
+      }
+
+      await adminAlert(
+        `${team.team_name} cannot be deleted because it is still used in ${references.join(
+          " and "
+        )}. Remove or replace the team there first, then try again.`,
+        {
+          title: "Team still in use",
+          tone: "error"
+        }
+      );
+
+      return;
+    }
+
+    const confirmed = await adminConfirm(
+      `Delete ${team.team_name} permanently? This cannot be undone.`,
+      {
+        title: "Delete team",
+        confirmLabel: "Delete team"
+      }
+    );
+
+    if (!confirmed) return;
+
+    showAdminTaskToast(
+      `Deleting ${team.team_name}…`,
+      "loading",
+      { persistent: true }
+    );
+
+    const { error } = await client()
+      .from("teams")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      hideAdminTaskToast();
+
+      if (error.code === "23503") {
+        await adminAlert(
+          `${team.team_name} is still linked to standings, fixtures or results. Remove those references and try again.`,
+          {
+            title: "Team still in use",
+            tone: "error"
+          }
+        );
+
+        return;
+      }
+
+      throw new Error(error.message);
+    }
+
+    notice(`${team.team_name} deleted.`);
+    await loadTeams();
+  } catch (error) {
+    hideAdminTaskToast();
+
+    notice(
+      error.message ||
+        "The team could not be deleted.",
+      "error"
+    );
+  }
 }
 
 function setupTeamAdmin() {
@@ -2813,7 +3196,7 @@ async function deletePartner(id) {
 
   if (!partner) return;
 
-  if (!confirm(`Delete ${partner.name}?`)) return;
+  if (!(await adminConfirm(`Delete ${partner.name}?`))) return;
 
   const { error } = await client()
     .from("partners")

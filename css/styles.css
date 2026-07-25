@@ -2031,3 +2031,232 @@ body[data-page="fixtures"]
   }
 }
 
+/* Imperial Admin dialogs and notifications */
+.admin-action-dialog {
+  width: min(92vw, 560px);
+  max-width: 560px;
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow:
+    0 28px 80px rgba(7, 16, 31, 0.28);
+}
+
+.admin-action-dialog::backdrop {
+  background: rgba(7, 16, 31, 0.7);
+  backdrop-filter: blur(5px);
+}
+
+.admin-action-dialog__panel {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.admin-action-dialog__header {
+  padding: 25px 26px 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-action-dialog__eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--blue);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.admin-action-dialog__header h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 2rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-action-dialog__close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #ffffff;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.admin-action-dialog__message {
+  margin: 0;
+  padding: 26px;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.admin-action-dialog__actions {
+  padding: 18px 26px 24px;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.admin-action-dialog__actions button {
+  min-height: 44px;
+  padding: 0 19px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-action-dialog__confirm {
+  color: #ffffff;
+  border-color: var(--blue) !important;
+  background: var(--blue) !important;
+}
+
+.admin-action-dialog[data-tone="danger"]
+.admin-action-dialog__confirm {
+  border-color: var(--danger) !important;
+  background: var(--danger) !important;
+}
+
+.admin-action-dialog[data-tone="error"]
+.admin-action-dialog__header {
+  border-top: 5px solid var(--danger);
+}
+
+.admin-action-dialog[data-tone="info"]
+.admin-action-dialog__header {
+  border-top: 5px solid var(--blue);
+}
+
+/* Consistent compact Admin toast */
+.admin-task-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 4000;
+  width: min(calc(100vw - 32px), 390px);
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow:
+    0 18px 55px rgba(7, 16, 31, 0.2);
+}
+
+.admin-task-toast[hidden] {
+  display: none !important;
+}
+
+.admin-task-toast__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blue-pale);
+}
+
+.admin-task-toast__icon::before {
+  content: "✓";
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.admin-task-toast[data-type="loading"]
+.admin-task-toast__icon::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  border: 2px solid #b9c9e8;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: admin-toast-spin 700ms linear infinite;
+}
+
+.admin-task-toast[data-type="error"] {
+  border-color: #f0b8b2;
+}
+
+.admin-task-toast[data-type="error"]
+.admin-task-toast__icon {
+  background: #fdecea;
+}
+
+.admin-task-toast[data-type="error"]
+.admin-task-toast__icon::before {
+  content: "!";
+  color: var(--danger);
+}
+
+.admin-task-toast__title,
+.admin-task-toast__message {
+  display: block;
+}
+
+.admin-task-toast__title {
+  margin-bottom: 2px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.admin-task-toast__message {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.admin-notice {
+  display: none !important;
+}
+
+@keyframes admin-toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-action-dialog__header,
+  .admin-action-dialog__message,
+  .admin-action-dialog__actions {
+    padding-left: 19px;
+    padding-right: 19px;
+  }
+
+  .admin-action-dialog__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-action-dialog__actions button {
+    width: 100%;
+  }
+
+  .admin-task-toast {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
