@@ -1857,6 +1857,668 @@ function setupTeamAdmin() {
   updateTeamLogoControlLabels(form);
 }
 
+let currentPartners = [];
+
+function partnerInitials(name) {
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4) || "P";
+}
+
+function normalisePartnerUrl(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) return null;
+
+  const prepared = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
+
+  const url = new URL(prepared);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error(
+      "Partner links must use http:// or https://."
+    );
+  }
+
+  return url.toString();
+}
+
+function clampPartnerLogoValue(value, minimum, maximum) {
+  return Math.min(
+    maximum,
+    Math.max(minimum, Number(value) || 0)
+  );
+}
+
+function partnerLogoSettings(partner = {}) {
+  return {
+    scale: clampPartnerLogoValue(
+      partner.logo_scale ?? partner.scale ?? 100,
+      50,
+      250
+    ),
+
+    x: clampPartnerLogoValue(
+      partner.logo_offset_x ?? partner.x ?? 0,
+      -40,
+      40
+    ),
+
+    y: clampPartnerLogoValue(
+      partner.logo_offset_y ?? partner.y ?? 0,
+      -40,
+      40
+    )
+  };
+}
+
+function partnerLogoTransform(partner = {}) {
+  const settings = partnerLogoSettings(partner);
+
+  return [
+    `translate(${settings.x}%, ${settings.y}%)`,
+    `scale(${settings.scale / 100})`
+  ].join(" ");
+}
+
+function readPartnerLogoAdjustment(form) {
+  return {
+    logo_scale: clampPartnerLogoValue(
+      form.elements.logo_scale?.value ?? 100,
+      50,
+      250
+    ),
+
+    logo_offset_x: clampPartnerLogoValue(
+      form.elements.logo_offset_x?.value ?? 0,
+      -40,
+      40
+    ),
+
+    logo_offset_y: clampPartnerLogoValue(
+      form.elements.logo_offset_y?.value ?? 0,
+      -40,
+      40
+    )
+  };
+}
+
+function updatePartnerLogoControlLabels(form) {
+  if (!form) return;
+
+  const settings = readPartnerLogoAdjustment(form);
+
+  const scaleLabel = form.querySelector(
+    "[data-partner-scale-label]"
+  );
+
+  const xLabel = form.querySelector(
+    "[data-partner-x-label]"
+  );
+
+  const yLabel = form.querySelector(
+    "[data-partner-y-label]"
+  );
+
+  if (scaleLabel) {
+    scaleLabel.textContent =
+      `${settings.logo_scale}%`;
+  }
+
+  if (xLabel) {
+    xLabel.textContent =
+      String(settings.logo_offset_x);
+  }
+
+  if (yLabel) {
+    yLabel.textContent =
+      String(settings.logo_offset_y);
+  }
+}
+
+function partnerLogoMarkup(partner) {
+  const fallback = partnerInitials(partner.name);
+
+  if (!partner.logo_url) {
+    return `
+      <div
+        class="team-admin-badge team-admin-badge--fallback"
+      >
+        ${esc(fallback)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="team-admin-badge">
+      <img
+        src="${esc(partner.logo_url)}"
+        alt="${esc(partner.name)} logo"
+        loading="lazy"
+        data-partner-logo
+        style="transform: ${partnerLogoTransform(partner)};"
+      >
+      <span hidden>${esc(fallback)}</span>
+    </div>
+  `;
+}
+
+async function loadPartners() {
+  const list =
+    document.getElementById("partnerAdminList");
+
+  if (!list) return;
+
+  list.innerHTML =
+    '<div class="admin-empty">Loading partners…</div>';
+
+  const { data, error } = await client()
+    .from("partners")
+    .select("*")
+    .order("display_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML =
+      '<div class="admin-empty">Partners could not be loaded.</div>';
+
+    return notice(error.message, "error");
+  }
+
+  currentPartners = data || [];
+
+  const visiblePartners =
+    currentPartners.filter(partner => partner.published);
+
+  const homepageIds = new Set(
+    visiblePartners
+      .slice(0, 4)
+      .map(partner => String(partner.id))
+  );
+
+  list.innerHTML = currentPartners.length
+    ? currentPartners.map(partner => {
+        const visibleIndex = visiblePartners.findIndex(
+          item => item.id === partner.id
+        );
+
+        const homepagePosition =
+          partner.published &&
+          homepageIds.has(String(partner.id))
+            ? visibleIndex + 1
+            : null;
+
+        return `
+          <article class="admin-list-card team-admin-card">
+            ${partnerLogoMarkup(partner)}
+
+            <div class="team-admin-card__content">
+              <div class="admin-list-meta partner-status-list">
+                <span>
+                  Order ${Number(partner.display_order || 0)}
+                </span>
+
+                <span>
+                  ${
+                    !partner.published
+                      ? "Hidden"
+                      : homepagePosition
+                        ? `Homepage #${homepagePosition}`
+                        : "Directory only"
+                  }
+                </span>
+
+                <span>
+                  ${partner.website_url ? "Linked" : "No link"}
+                </span>
+              </div>
+
+              <h3>${esc(partner.name)}</h3>
+
+              ${
+                partner.website_url
+                  ? `
+                    <p>
+                      <a
+                        href="${esc(partner.website_url)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open partner website ↗
+                      </a>
+                    </p>
+                  `
+                  : "<p>No website link added.</p>"
+              }
+
+              <div class="admin-list-actions">
+                <button
+                  data-edit-partner="${esc(partner.id)}"
+                  type="button"
+                >
+                  Edit
+                </button>
+
+                <button
+                  class="danger-text"
+                  data-delete-partner="${esc(partner.id)}"
+                  type="button"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")
+    : '<div class="admin-empty">No partners added yet.</div>';
+
+  list
+    .querySelectorAll("[data-partner-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          if (image.nextElementSibling) {
+            image.nextElementSibling.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+
+  list
+    .querySelectorAll("[data-edit-partner]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editPartner(button.dataset.editPartner);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-partner]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deletePartner(button.dataset.deletePartner);
+      });
+    });
+}
+
+function updatePartnerLogoPreview(
+  url,
+  name = "",
+  settings = {}
+) {
+  const preview =
+    document.getElementById("partnerLogoPreview");
+
+  if (!preview) return;
+
+  if (!url) {
+    preview.innerHTML = `
+      <span>${esc(partnerInitials(name) || "LOGO")}</span>
+    `;
+
+    return;
+  }
+
+  preview.innerHTML = `
+    <img
+      src="${esc(url)}"
+      alt="Partner logo preview"
+      style="transform: ${partnerLogoTransform(settings)};"
+    >
+  `;
+}
+
+function editPartner(id) {
+  const partner = currentPartners.find(
+    item => item.id === id
+  );
+
+  if (!partner) return;
+
+  const form = document.getElementById("partnerForm");
+
+  form.elements.id.value = partner.id;
+  form.elements.name.value = partner.name || "";
+  form.elements.website_url.value =
+    partner.website_url || "";
+  form.elements.display_order.value =
+    partner.display_order ?? 0;
+  form.elements.existing_logo_url.value =
+    partner.logo_url || "";
+  form.elements.published.checked =
+    Boolean(partner.published);
+
+  form.elements.logo_scale.value =
+    partner.logo_scale ?? 100;
+
+  form.elements.logo_offset_x.value =
+    partner.logo_offset_x ?? 0;
+
+  form.elements.logo_offset_y.value =
+    partner.logo_offset_y ?? 0;
+
+  updatePartnerLogoControlLabels(form);
+
+  updatePartnerLogoPreview(
+    partner.logo_url,
+    partner.name,
+    partner
+  );
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function resetPartnerForm() {
+  const form = document.getElementById("partnerForm");
+
+  if (!form) return;
+
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.existing_logo_url.value = "";
+  form.elements.display_order.value = 0;
+  form.elements.published.checked = true;
+
+  form.elements.logo_scale.value = 100;
+  form.elements.logo_offset_x.value = 0;
+  form.elements.logo_offset_y.value = 0;
+
+  updatePartnerLogoControlLabels(form);
+
+  updatePartnerLogoPreview(
+    "",
+    "",
+    readPartnerLogoAdjustment(form)
+  );
+}
+
+async function savePartner(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  if (!form.checkValidity()) {
+    return form.reportValidity();
+  }
+
+  if (form.dataset.saveBusy === "true") return;
+
+  const data = new FormData(form);
+  const name = String(data.get("name") || "").trim();
+  const file = data.get("logo_file");
+
+  let logoUrl = String(
+    data.get("existing_logo_url") || ""
+  ).trim();
+
+  let websiteUrl = null;
+
+  try {
+    websiteUrl = normalisePartnerUrl(
+      data.get("website_url")
+    );
+  } catch (error) {
+    return notice(error.message, "error");
+  }
+
+  if (!name) {
+    return notice("Enter the partner name.", "error");
+  }
+
+  if (file?.size) {
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return notice(
+        "Use a PNG, JPG or WebP partner logo.",
+        "error"
+      );
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      return notice(
+        "The partner logo must be smaller than 2 MB.",
+        "error"
+      );
+    }
+  }
+
+  const button = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  form.dataset.saveBusy = "true";
+
+  if (button) {
+    button.dataset.originalText ||=
+      button.textContent.trim();
+
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  try {
+    if (file?.size) {
+      showAdminTaskToast(
+        "Uploading the partner logo…",
+        "loading",
+        { persistent: true }
+      );
+
+      logoUrl = await uploadFile(file, "partners");
+    }
+
+    showAdminTaskToast(
+      "Saving the partner details…",
+      "loading",
+      { persistent: true }
+    );
+
+    const payload = {
+      name,
+      logo_url: logoUrl || null,
+      website_url: websiteUrl,
+      display_order: Math.max(
+        0,
+        Number(data.get("display_order") || 0)
+      ),
+
+      ...readPartnerLogoAdjustment(form),
+
+      published:
+        data.get("published") === "on",
+      updated_at: new Date().toISOString()
+    };
+
+    const id = String(data.get("id") || "");
+
+    const { error } = id
+      ? await client()
+          .from("partners")
+          .update(payload)
+          .eq("id", id)
+      : await client()
+          .from("partners")
+          .insert(payload);
+
+    if (error) throw new Error(error.message);
+
+    showAdminTaskToast(
+      id
+        ? "Partner updated successfully."
+        : "Partner added successfully.",
+      "success"
+    );
+
+    resetPartnerForm();
+    await loadPartners();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "The partner could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "The partner could not be saved.",
+      "error"
+    );
+  } finally {
+    form.dataset.saveBusy = "false";
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText || "Save partner";
+    }
+  }
+}
+
+async function deletePartner(id) {
+  const partner = currentPartners.find(
+    item => item.id === id
+  );
+
+  if (!partner) return;
+
+  if (!confirm(`Delete ${partner.name}?`)) return;
+
+  const { error } = await client()
+    .from("partners")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return notice(error.message, "error");
+  }
+
+  notice("Partner deleted.");
+  await loadPartners();
+}
+
+function setupPartnerAdmin() {
+  const form = document.getElementById("partnerForm");
+  const resetButton =
+    document.getElementById("resetPartnerForm");
+  const tab = document.querySelector(
+    '[data-admin-tab="partners"]'
+  );
+
+  form?.addEventListener("submit", savePartner);
+
+  resetButton?.addEventListener(
+    "click",
+    resetPartnerForm
+  );
+
+  tab?.addEventListener("click", loadPartners);
+
+  form?.elements.logo_file?.addEventListener(
+    "change",
+    event => {
+      const file = event.target.files?.[0];
+
+      if (!file) {
+        updatePartnerLogoPreview(
+          form.elements.existing_logo_url.value,
+          form.elements.name.value
+        );
+
+        return;
+      }
+
+      updatePartnerLogoPreview(
+        URL.createObjectURL(file),
+        form.elements.name.value
+      );
+    }
+  );
+
+  form?.elements.name?.addEventListener(
+    "input",
+    () => {
+      if (
+        !form.elements.logo_file.files?.length &&
+        !form.elements.existing_logo_url.value
+      ) {
+        updatePartnerLogoPreview(
+          "",
+          form.elements.name.value,
+          readPartnerLogoAdjustment(form)
+        );
+      }
+    }
+  );
+
+  [
+    "logo_scale",
+    "logo_offset_x",
+    "logo_offset_y"
+  ].forEach(fieldName => {
+    form?.elements[fieldName]?.addEventListener(
+      "input",
+      () => {
+        updatePartnerLogoControlLabels(form);
+
+        const file =
+          form.elements.logo_file.files?.[0];
+
+        const previewUrl = file
+          ? URL.createObjectURL(file)
+          : form.elements.existing_logo_url.value;
+
+        updatePartnerLogoPreview(
+          previewUrl,
+          form.elements.name.value,
+          readPartnerLogoAdjustment(form)
+        );
+      }
+    );
+  });
+
+  document
+    .getElementById("resetPartnerLogoPosition")
+    ?.addEventListener("click", () => {
+      form.elements.logo_scale.value = 100;
+      form.elements.logo_offset_x.value = 0;
+      form.elements.logo_offset_y.value = 0;
+
+      updatePartnerLogoControlLabels(form);
+
+      const file =
+        form.elements.logo_file.files?.[0];
+
+      const previewUrl = file
+        ? URL.createObjectURL(file)
+        : form.elements.existing_logo_url.value;
+
+      updatePartnerLogoPreview(
+        previewUrl,
+        form.elements.name.value,
+        readPartnerLogoAdjustment(form)
+      );
+    });
+}
+
 async function loadSettings() {
   const { data, error } = await client().from("site_settings").select("key,value");
   if (error) return notice(error.message, "error");
@@ -1879,4 +2541,5 @@ async function saveSettings(event) {
 }
 
 document.addEventListener("DOMContentLoaded", setupTeamAdmin);
+document.addEventListener("DOMContentLoaded", setupPartnerAdmin);
 document.addEventListener("DOMContentLoaded", initAdmin);

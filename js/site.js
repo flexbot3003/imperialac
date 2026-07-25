@@ -1158,3 +1158,264 @@ async function initialiseSite() {
 }
 
 document.addEventListener("DOMContentLoaded", initialiseSite);
+
+function publicPartnerInitials(name) {
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4) || "P";
+}
+
+function publicPartnerTransform(partner = {}) {
+  const scale = Math.min(
+    250,
+    Math.max(50, Number(partner.logo_scale) || 100)
+  );
+
+  const x = Math.min(
+    40,
+    Math.max(-40, Number(partner.logo_offset_x) || 0)
+  );
+
+  const y = Math.min(
+    40,
+    Math.max(-40, Number(partner.logo_offset_y) || 0)
+  );
+
+  return `translate(${x}%, ${y}%) scale(${scale / 100})`;
+}
+
+function publicPartnerLogo(partner) {
+  const fallback = escapeHtml(
+    publicPartnerInitials(partner.name)
+  );
+
+  if (!partner.logo_url) {
+    return `
+      <span class="public-partner-logo public-partner-logo--fallback">
+        ${fallback}
+      </span>
+    `;
+  }
+
+  return `
+    <span class="public-partner-logo">
+      <img
+        src="${escapeHtml(partner.logo_url)}"
+        alt="${escapeHtml(partner.name)} logo"
+        loading="lazy"
+        data-public-partner-logo
+        style="transform: ${publicPartnerTransform(partner)};"
+      >
+
+      <span
+        class="public-partner-logo__fallback"
+        hidden
+      >
+        ${fallback}
+      </span>
+    </span>
+  `;
+}
+
+function activatePublicPartnerFallbacks(root = document) {
+  root
+    .querySelectorAll("[data-public-partner-logo]")
+    .forEach(image => {
+      image.addEventListener(
+        "error",
+        () => {
+          image.hidden = true;
+
+          const fallback = image.nextElementSibling;
+
+          if (fallback) {
+            fallback.hidden = false;
+          }
+        },
+        { once: true }
+      );
+    });
+}
+
+function findOrCreatePartnerMount() {
+  const isPartnersPage =
+    document.body?.dataset.page === "partners";
+
+  if (!isPartnersPage) {
+    return document.querySelector(".partner-logos");
+  }
+
+  let mount =
+    document.getElementById("partnerList") ||
+    document.querySelector(
+      "[data-partner-list], .partners-grid"
+    );
+
+  if (mount) {
+    mount.id = "partnerList";
+    mount.classList.add("public-partner-grid");
+    return mount;
+  }
+
+  const main = document.querySelector("main");
+
+  if (!main) return null;
+
+  const section = document.createElement("section");
+  section.className = "section";
+
+  section.innerHTML = `
+    <div class="container">
+      <div
+        class="public-partner-grid"
+        id="partnerList"
+      ></div>
+    </div>
+  `;
+
+  main.appendChild(section);
+
+  return section.querySelector("#partnerList");
+}
+
+async function renderPublicPartners() {
+  const isPartnersPage =
+    document.body?.dataset.page === "partners";
+
+  const mount = findOrCreatePartnerMount();
+
+  if (!mount) return;
+
+  const client = getCmsClient();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("partners")
+    .select(
+      "id,name,logo_url,website_url," +
+      "display_order,published," +
+      "logo_scale,logo_offset_x,logo_offset_y"
+    )
+    .eq("published", true)
+    .order("display_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Partners could not be loaded:", error);
+    return;
+  }
+
+  const partners = data || [];
+
+  if (!isPartnersPage) {
+    const homepagePartners = partners.slice(0, 4);
+
+    const slots = Array.from(
+      { length: 4 },
+      (_, index) => {
+        const partner = homepagePartners[index];
+
+        if (!partner) {
+          return `
+            <div class="partner-logo-slot">
+              Partner ${String(index + 1).padStart(2, "0")}
+            </div>
+          `;
+        }
+
+        const contents = `
+          ${publicPartnerLogo(partner)}
+
+          <span class="partner-logo-slot__name">
+            ${escapeHtml(partner.name)}
+          </span>
+        `;
+
+        if (partner.website_url) {
+          return `
+            <a
+              class="partner-logo-slot partner-logo-slot--live"
+              href="${escapeHtml(partner.website_url)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit ${escapeHtml(partner.name)}"
+            >
+              ${contents}
+            </a>
+          `;
+        }
+
+        return `
+          <div
+            class="partner-logo-slot partner-logo-slot--live"
+          >
+            ${contents}
+          </div>
+        `;
+      }
+    );
+
+    mount.innerHTML = slots.join("");
+    activatePublicPartnerFallbacks(mount);
+    return;
+  }
+
+  if (!partners.length) {
+    mount.innerHTML = `
+      <div class="partner-public-empty">
+        Partner announcements will appear here.
+      </div>
+    `;
+    return;
+  }
+
+  mount.innerHTML = partners.map(partner => {
+    const content = `
+      ${publicPartnerLogo(partner)}
+
+      <span class="public-partner-name">
+        ${escapeHtml(partner.name)}
+      </span>
+
+      ${
+        partner.website_url
+          ? '<span class="public-partner-link">Visit website ↗</span>'
+          : ""
+      }
+    `;
+
+    if (partner.website_url) {
+      return `
+        <a
+          class="public-partner-card"
+          href="${escapeHtml(partner.website_url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Visit ${escapeHtml(partner.name)}"
+        >
+          ${content}
+        </a>
+      `;
+    }
+
+    return `
+      <article class="public-partner-card">
+        ${content}
+      </article>
+    `;
+  }).join("");
+
+  activatePublicPartnerFallbacks(mount);
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  renderPublicPartners
+);
