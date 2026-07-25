@@ -2260,3 +2260,30 @@ body[data-page="fixtures"]
   }
 }
 
+/* Standing crest background rules */
+
+/* Every non-Imperial crest holder */
+.standings-table tr:not(.is-imperial) .table-crest,
+.standings-table tr:not(.is-imperial) .table-crest--logo,
+.standings-table tr:not(.is-imperial) .table-crest__fallback {
+  color: var(--ink) !important;
+  background: #ffffff !important;
+  border-color: var(--line) !important;
+}
+
+/* Imperial AC only */
+.standings-table tr.is-imperial .table-crest,
+.standings-table tr.is-imperial .table-crest--logo,
+.standings-table tr.is-imperial .table-crest__fallback {
+  color: #ffffff !important;
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+}
+
+/* Keep uploaded crest artwork contained */
+.standings-table .table-crest--logo img {
+  position: relative;
+  z-index: 1;
+}
+
+/* End standing crest background rules */
