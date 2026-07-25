@@ -1566,3 +1566,370 @@ a.public-partner-card:hover {
   transform-origin: center;
 }
 
+/* Homepage match-centre badges */
+#homeMatch .match-teams {
+  grid-template-columns:
+    minmax(0, 1fr)
+    clamp(58px, 6vw, 90px)
+    minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 46px);
+}
+
+#homeMatch .match-team-card {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 18px;
+  text-align: center;
+}
+
+#homeMatch .home-match-team-mark {
+  width: clamp(112px, 8vw, 138px);
+  height: clamp(112px, 8vw, 138px);
+  flex: 0 0 auto;
+  overflow: hidden;
+  transform-origin: center;
+}
+
+#homeMatch .home-match-team-mark--logo {
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+#homeMatch
+.home-match-team-mark--logo.team-mark--outline {
+  background: #ffffff;
+  border-color: var(--blue);
+}
+
+#homeMatch .home-match-team-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 10px;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+#homeMatch
+.home-match-team-mark__fallback:not([hidden]) {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+#homeMatch .home-match-team-name {
+  max-width: 280px;
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.7rem, 2.35vw, 2.8rem);
+  line-height: 0.95;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+#homeMatch .score-mark {
+  font-size: clamp(2rem, 3vw, 3.3rem);
+}
+
+@media (max-width: 720px) {
+  #homeMatch .match-teams {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  #homeMatch .home-match-team-mark {
+    width: 104px;
+    height: 104px;
+  }
+
+  #homeMatch .home-match-team-name {
+    max-width: 240px;
+    font-size: clamp(1.7rem, 8vw, 2.35rem);
+  }
+
+  #homeMatch .score-mark {
+    padding: 4px 0;
+  }
+}
+
+/* Compact fixture card grid */
+body[data-page="fixtures"] .fixture-list,
+body[data-page="fixtures"] .fixture-card-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.fixture-google-card {
+  min-width: 0;
+  min-height: 185px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.fixture-google-card:hover {
+  position: relative;
+  z-index: 2;
+  background: #f7f9fd;
+}
+
+.fixture-google-card__main {
+  min-width: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(74px, auto);
+  gap: 16px;
+  align-items: center;
+}
+
+.fixture-google-card__teams {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.fixture-google-team {
+  min-width: 0;
+  display: grid;
+  grid-template-columns:
+    34px
+    minmax(0, 1fr)
+    auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--ink-2);
+}
+
+.fixture-google-team.is-winner {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.fixture-card-badge {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #ffffff;
+  background: var(--blue);
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 900;
+  line-height: 1;
+  transform-origin: center;
+}
+
+.fixture-card-badge--logo {
+  color: var(--blue);
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+.fixture-card-badge img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 2px;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+.fixture-card-badge__fallback:not([hidden]) {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.fixture-google-team__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.fixture-google-team__score {
+  min-width: 22px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1.3rem;
+  line-height: 1;
+  text-align: right;
+}
+
+.fixture-google-card__when {
+  min-height: 78px;
+  padding-left: 16px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+
+.fixture-google-card__when strong {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1.15rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.fixture-google-card__when span {
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.fixture-google-card--postponed
+.fixture-google-card__when span,
+.fixture-google-card--cancelled
+.fixture-google-card__when span {
+  color: var(--danger);
+}
+
+.fixture-google-card__footer {
+  margin-top: auto;
+  padding-top: 17px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+body[data-page="fixtures"]
+[data-fixture-results-section]
+.fixture-google-card {
+  background: #fbfcfe;
+}
+
+/* Two cards per row on mobile, as requested. */
+@media (max-width: 720px) {
+  body[data-page="fixtures"] .fixture-list,
+  body[data-page="fixtures"] .fixture-card-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .fixture-google-card {
+    min-height: 175px;
+    padding: 14px;
+  }
+
+  .fixture-google-card__main {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(58px, auto);
+    gap: 10px;
+  }
+
+  .fixture-google-team {
+    grid-template-columns:
+      28px
+      minmax(0, 1fr)
+      auto;
+    gap: 7px;
+  }
+
+  .fixture-card-badge {
+    width: 28px;
+    height: 28px;
+  }
+
+  .fixture-google-team__name {
+    font-size: 0.76rem;
+  }
+
+  .fixture-google-team__score {
+    min-width: 16px;
+    font-size: 1.05rem;
+  }
+
+  .fixture-google-card__when {
+    min-height: 68px;
+    padding-left: 9px;
+  }
+
+  .fixture-google-card__when strong {
+    font-size: 0.92rem;
+  }
+
+  .fixture-google-card__when span {
+    font-size: 0.68rem;
+  }
+
+  .fixture-google-card__footer {
+    padding-top: 12px;
+    font-size: 0.57rem;
+  }
+}
+
+@media (max-width: 460px) {
+  .fixture-google-card {
+    padding: 11px;
+  }
+
+  .fixture-google-card__main {
+    grid-template-columns:
+      minmax(0, 1fr)
+      50px;
+    gap: 7px;
+  }
+
+  .fixture-google-card__teams {
+    gap: 9px;
+  }
+
+  .fixture-google-team {
+    grid-template-columns:
+      24px
+      minmax(0, 1fr)
+      auto;
+    gap: 5px;
+  }
+
+  .fixture-card-badge {
+    width: 24px;
+    height: 24px;
+  }
+
+  .fixture-google-team__name {
+    font-size: 0.67rem;
+  }
+
+  .fixture-google-card__when {
+    padding-left: 6px;
+  }
+
+  .fixture-google-card__when strong {
+    font-size: 0.78rem;
+  }
+
+  .fixture-google-card__when span {
+    font-size: 0.58rem;
+  }
+}
+

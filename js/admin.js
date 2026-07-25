@@ -791,57 +791,470 @@ async function deleteStanding(button) {
   await loadStandings();
 }
 
+function fixtureTeamById(id) {
+  return currentTeams.find(
+    team => String(team.id) === String(id || "")
+  ) || null;
+}
+
+function fixtureTeamIdFromName(name) {
+  const normalised = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  return currentTeams.find(
+    team =>
+      String(team.team_name || "")
+        .trim()
+        .toLowerCase() === normalised
+  )?.id || "";
+}
+
+function fixtureTeamOptions(selectedId = "") {
+  const options = currentTeams.map(team => {
+    const selected =
+      String(team.id) === String(selectedId)
+        ? " selected"
+        : "";
+
+    const code = teamInitials(
+      team.team_name,
+      team.short_code
+    );
+
+    return `
+      <option value="${esc(team.id)}"${selected}>
+        ${esc(team.team_name)} (${esc(code)})
+      </option>
+    `;
+  });
+
+  return `
+    <option value=""${selectedId ? "" : " selected"}>
+      Select team
+    </option>
+
+    ${options.join("")}
+  `;
+}
+
+function refreshFixtureTeamOptions() {
+  const form = document.getElementById("fixtureForm");
+
+  if (!form) return;
+
+  const homeSelect = form.elements.home_team_id;
+  const awaySelect = form.elements.away_team_id;
+
+  if (!homeSelect || !awaySelect) return;
+
+  [...homeSelect.options].forEach(option => {
+    if (!option.value) return;
+
+    const unavailable =
+      option.value === awaySelect.value &&
+      option.value !== homeSelect.value;
+
+    option.disabled = unavailable;
+    option.hidden = unavailable;
+  });
+
+  [...awaySelect.options].forEach(option => {
+    if (!option.value) return;
+
+    const unavailable =
+      option.value === homeSelect.value &&
+      option.value !== awaySelect.value;
+
+    option.disabled = unavailable;
+    option.hidden = unavailable;
+  });
+}
+
+function populateFixtureTeamSelects(
+  homeTeamId = "",
+  awayTeamId = ""
+) {
+  const form = document.getElementById("fixtureForm");
+
+  if (!form) return;
+
+  const homeSelect = form.elements.home_team_id;
+  const awaySelect = form.elements.away_team_id;
+
+  if (!homeSelect || !awaySelect) return;
+
+  homeSelect.innerHTML =
+    fixtureTeamOptions(homeTeamId);
+
+  awaySelect.innerHTML =
+    fixtureTeamOptions(awayTeamId);
+
+  homeSelect.value = homeTeamId || "";
+  awaySelect.value = awayTeamId || "";
+
+  refreshFixtureTeamOptions();
+
+  for (const select of [homeSelect, awaySelect]) {
+    if (select.dataset.fixtureTeamListener === "true") {
+      continue;
+    }
+
+    select.dataset.fixtureTeamListener = "true";
+
+    select.addEventListener(
+      "change",
+      refreshFixtureTeamOptions
+    );
+  }
+}
+
 async function loadFixtures() {
-  const { data, error } = await client().from("fixtures").select("*").order("match_date", { ascending: false });
-  if (error) return notice(error.message, "error");
-  currentFixtures = data || [];
-  const list = document.getElementById("fixtureAdminList");
-  list.innerHTML = currentFixtures.length ? currentFixtures.map(item => {
-    const score = item.status === "result" ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}` : statusLabel(item.status);
-    return `<article class="admin-list-card"><div class="admin-list-meta"><span>${esc(shortDate(item.match_date))}</span><span>${esc(statusLabel(item.status))}${item.published ? "" : " • Hidden"}</span></div><h3>${esc(item.home_team)} <strong>${esc(score)}</strong> ${esc(item.away_team)}</h3><p>${esc(item.competition || "MPL")} • ${esc(shortTime(item.kickoff_time))}${item.venue ? ` • ${esc(item.venue)}` : ""}</p><div class="admin-list-actions"><button type="button" data-edit-fixture="${esc(item.id)}">Edit</button><button class="danger-text" type="button" data-delete-fixture="${esc(item.id)}">Delete</button></div></article>`;
-  }).join("") : '<div class="admin-empty">No fixtures or results yet.</div>';
-  list.querySelectorAll("[data-edit-fixture]").forEach(button => button.addEventListener("click", () => editFixture(button.dataset.editFixture)));
-  list.querySelectorAll("[data-delete-fixture]").forEach(button => button.addEventListener("click", () => deleteFixture(button.dataset.deleteFixture)));
+  const [teamsResponse, fixturesResponse] =
+    await Promise.all([
+      client()
+        .from("teams")
+        .select("*")
+        .order("is_home_club", { ascending: false })
+        .order("team_name", { ascending: true }),
+
+      client()
+        .from("fixtures")
+        .select("*")
+        .order("match_date", { ascending: false })
+    ]);
+
+  if (teamsResponse.error) {
+    return notice(
+      `Teams could not be loaded: ${teamsResponse.error.message}`,
+      "error"
+    );
+  }
+
+  if (fixturesResponse.error) {
+    return notice(
+      fixturesResponse.error.message,
+      "error"
+    );
+  }
+
+  currentTeams = teamsResponse.data || [];
+  currentFixtures = fixturesResponse.data || [];
+
+  const form = document.getElementById("fixtureForm");
+
+  populateFixtureTeamSelects(
+    form?.elements.home_team_id?.value || "",
+    form?.elements.away_team_id?.value || ""
+  );
+
+  const list =
+    document.getElementById("fixtureAdminList");
+
+  list.innerHTML = currentFixtures.length
+    ? currentFixtures.map(item => {
+        const score = item.status === "result"
+          ? `${item.home_score ?? "–"} - ${item.away_score ?? "–"}`
+          : statusLabel(item.status);
+
+        return `
+          <article class="admin-list-card">
+            <div class="admin-list-meta">
+              <span>${esc(shortDate(item.match_date))}</span>
+
+              <span>
+                ${esc(statusLabel(item.status))}
+                ${item.published ? "" : " • Hidden"}
+              </span>
+            </div>
+
+            <h3>
+              ${esc(item.home_team)}
+              <strong>${esc(score)}</strong>
+              ${esc(item.away_team)}
+            </h3>
+
+            <p>
+              ${esc(item.competition || "MPL")}
+              • ${esc(shortTime(item.kickoff_time))}
+              ${item.venue ? ` • ${esc(item.venue)}` : ""}
+            </p>
+
+            <div class="admin-list-actions">
+              <button
+                type="button"
+                data-edit-fixture="${esc(item.id)}"
+              >
+                Edit
+              </button>
+
+              <button
+                class="danger-text"
+                type="button"
+                data-delete-fixture="${esc(item.id)}"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+        `;
+      }).join("")
+    : '<div class="admin-empty">No fixtures or results yet.</div>';
+
+  list
+    .querySelectorAll("[data-edit-fixture]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        editFixture(button.dataset.editFixture);
+      });
+    });
+
+  list
+    .querySelectorAll("[data-delete-fixture]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        deleteFixture(button.dataset.deleteFixture);
+      });
+    });
+
   updateOverview();
 }
 
 function editFixture(id) {
-  const item = currentFixtures.find(fixture => fixture.id === id);
+  const item = currentFixtures.find(
+    fixture => fixture.id === id
+  );
+
   if (!item) return;
+
   const form = document.getElementById("fixtureForm");
-  for (const key of ["id", "competition", "status", "match_date", "home_team", "away_team", "venue", "notes"]) if (form.elements[key]) form.elements[key].value = item[key] || "";
-  form.elements.kickoff_time.value = item.kickoff_time ? String(item.kickoff_time).slice(0, 5) : "";
-  form.elements.home_score.value = item.home_score ?? "";
-  form.elements.away_score.value = item.away_score ?? "";
-  form.elements.published.checked = Boolean(item.published);
-  form.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  for (const key of [
+    "id",
+    "competition",
+    "status",
+    "match_date",
+    "venue",
+    "notes"
+  ]) {
+    if (form.elements[key]) {
+      form.elements[key].value = item[key] || "";
+    }
+  }
+
+  const homeTeamId =
+    item.home_team_id ||
+    fixtureTeamIdFromName(item.home_team);
+
+  const awayTeamId =
+    item.away_team_id ||
+    fixtureTeamIdFromName(item.away_team);
+
+  populateFixtureTeamSelects(
+    homeTeamId,
+    awayTeamId
+  );
+
+  form.elements.kickoff_time.value =
+    item.kickoff_time
+      ? String(item.kickoff_time).slice(0, 5)
+      : "";
+
+  form.elements.home_score.value =
+    item.home_score ?? "";
+
+  form.elements.away_score.value =
+    item.away_score ?? "";
+
+  form.elements.published.checked =
+    Boolean(item.published);
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
 
 function resetFixtureForm() {
   const form = document.getElementById("fixtureForm");
+
   form.reset();
   form.elements.id.value = "";
   form.elements.competition.value = "MPL";
   form.elements.status.value = "upcoming";
   form.elements.published.checked = true;
+
+  const homeClub = currentTeams.find(
+    team => team.is_home_club
+  );
+
+  populateFixtureTeamSelects(
+    homeClub?.id || "",
+    ""
+  );
 }
 
 async function saveFixture(event) {
   event.preventDefault();
+
   const form = event.currentTarget;
-  if (!form.checkValidity()) return form.reportValidity();
+
+  if (!form.checkValidity()) {
+    return form.reportValidity();
+  }
+
+  if (form.dataset.saveBusy === "true") return;
+
   const data = new FormData(form);
   const status = data.get("status");
-  const homeScore = nullableNumber(data.get("home_score"));
-  const awayScore = nullableNumber(data.get("away_score"));
-  if (status === "result" && (homeScore === null || awayScore === null)) return notice("Enter both scores before saving a result.", "error");
-  const payload = { competition: data.get("competition").trim() || "MPL", match_date: data.get("match_date") || null, kickoff_time: data.get("kickoff_time") || null, home_team: data.get("home_team").trim(), away_team: data.get("away_team").trim(), home_score: status === "result" ? homeScore : null, away_score: status === "result" ? awayScore : null, venue: data.get("venue").trim() || null, status, notes: data.get("notes").trim() || null, published: data.get("published") === "on", updated_at: new Date().toISOString() };
-  const id = data.get("id");
-  const { error } = id ? await client().from("fixtures").update(payload).eq("id", id) : await client().from("fixtures").insert(payload);
-  if (error) return notice(error.message, "error");
-  notice(id ? "Fixture updated live." : "Fixture added live.");
-  resetFixtureForm();
-  await loadFixtures();
+
+  const homeTeamId =
+    String(data.get("home_team_id") || "");
+
+  const awayTeamId =
+    String(data.get("away_team_id") || "");
+
+  const homeTeam = fixtureTeamById(homeTeamId);
+  const awayTeam = fixtureTeamById(awayTeamId);
+
+  if (!homeTeam || !awayTeam) {
+    return notice(
+      "Select both teams from Teams & Logos.",
+      "error"
+    );
+  }
+
+  if (homeTeamId === awayTeamId) {
+    return notice(
+      "A team cannot play against itself.",
+      "error"
+    );
+  }
+
+  const homeScore =
+    nullableNumber(data.get("home_score"));
+
+  const awayScore =
+    nullableNumber(data.get("away_score"));
+
+  if (
+    status === "result" &&
+    (homeScore === null || awayScore === null)
+  ) {
+    return notice(
+      "Enter both scores before saving a result.",
+      "error"
+    );
+  }
+
+  const payload = {
+    competition:
+      String(data.get("competition") || "").trim() ||
+      "MPL",
+
+    match_date:
+      data.get("match_date") || null,
+
+    kickoff_time:
+      data.get("kickoff_time") || null,
+
+    home_team_id: homeTeam.id,
+    away_team_id: awayTeam.id,
+
+    home_team: homeTeam.team_name,
+    away_team: awayTeam.team_name,
+
+    home_score:
+      status === "result" ? homeScore : null,
+
+    away_score:
+      status === "result" ? awayScore : null,
+
+    venue:
+      String(data.get("venue") || "").trim() ||
+      null,
+
+    status,
+
+    notes:
+      String(data.get("notes") || "").trim() ||
+      null,
+
+    published:
+      data.get("published") === "on",
+
+    updated_at:
+      new Date().toISOString()
+  };
+
+  const id = String(data.get("id") || "");
+  const button = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  form.dataset.saveBusy = "true";
+
+  if (button) {
+    button.dataset.originalText ||=
+      button.textContent.trim();
+
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  showAdminTaskToast(
+    "Saving the confirmed fixture…",
+    "loading",
+    { persistent: true }
+  );
+
+  try {
+    const { error } = id
+      ? await client()
+          .from("fixtures")
+          .update(payload)
+          .eq("id", id)
+      : await client()
+          .from("fixtures")
+          .insert(payload);
+
+    if (error) throw new Error(error.message);
+
+    showAdminTaskToast(
+      id
+        ? "Fixture updated successfully."
+        : "Fixture added successfully.",
+      "success"
+    );
+
+    notice(
+      id
+        ? "Fixture updated live."
+        : "Fixture added live."
+    );
+
+    resetFixtureForm();
+    await loadFixtures();
+  } catch (error) {
+    showAdminTaskToast(
+      error.message || "The fixture could not be saved.",
+      "error"
+    );
+
+    notice(
+      error.message || "The fixture could not be saved.",
+      "error"
+    );
+  } finally {
+    form.dataset.saveBusy = "false";
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        button.dataset.originalText ||
+        "Save fixture";
+    }
+  }
 }
 
 async function deleteFixture(id) {
