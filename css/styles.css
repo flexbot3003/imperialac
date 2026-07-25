@@ -3141,3 +3141,437 @@ CSScat >> css/styles.css <<'CSS'
   }
 }
 /* End player directory heading filter layout */
+
+/* Public Squad and Legacy directory */
+.public-player-directory-head {
+  margin-bottom: 34px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(320px, 470px);
+  gap: clamp(28px, 5vw, 70px);
+  align-items: end;
+}
+
+.public-player-filter {
+  padding: 17px 18px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+  gap: 8px 16px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.public-player-filter label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.public-player-filter select {
+  min-width: 0;
+  min-height: 42px;
+}
+
+.public-player-filter span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.public-player-section {
+  margin-top: 58px;
+}
+
+.public-player-section:first-child {
+  margin-top: 0;
+}
+
+.public-player-section__head {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.public-player-section__head .eyebrow {
+  margin-bottom: 7px;
+}
+
+.public-player-section__head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.public-player-section__head > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.public-player-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.public-player-card {
+  min-width: 0;
+  min-height: 104px;
+  padding: 15px;
+  display: grid;
+  grid-template-columns:
+    68px
+    minmax(0, 1fr)
+    auto;
+  gap: 14px;
+  align-items: center;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #ffffff;
+  text-decoration: none;
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.public-player-card:hover {
+  border-color: var(--blue);
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 35px rgba(7, 16, 31, 0.08);
+}
+
+.public-player-card__photo {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.public-player-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.public-player-card__initials {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.public-player-card__identity {
+  min-width: 0;
+  display: grid;
+}
+
+.public-player-card__type {
+  margin-bottom: 6px;
+  color: var(--blue);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.public-player-card__name {
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 1.55rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.public-player-card__position {
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-player-card__arrow {
+  color: var(--blue);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.public-player-loading,
+.public-player-empty {
+  padding: clamp(35px, 7vw, 80px);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+}
+
+.public-player-empty h1,
+.public-player-empty h2 {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  text-transform: uppercase;
+}
+
+.public-player-empty .button {
+  margin-top: 18px;
+}
+
+/* Public player profile */
+.public-player-profile {
+  display: grid;
+  grid-template-columns:
+    minmax(280px, 430px)
+    minmax(0, 1fr);
+  gap: clamp(38px, 7vw, 100px);
+  align-items: start;
+}
+
+.public-player-profile__photo {
+  position: sticky;
+  top: 110px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.public-player-profile__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.public-player-profile__initials {
+  width: 130px;
+  height: 130px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 50%;
+  background: var(--blue);
+  font-family: var(--display);
+  font-size: 2.2rem;
+}
+
+.public-player-profile__content {
+  min-width: 0;
+}
+
+.public-player-profile__nickname {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
+.public-player-profile__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-player-profile__tags span {
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.public-player-profile__legacy {
+  margin-top: 18px;
+  padding: 16px 18px;
+  color: var(--blue);
+  border-left: 4px solid var(--blue);
+  background: var(--blue-pale);
+  font-weight: 900;
+}
+
+.public-player-profile__years {
+  margin-top: 24px;
+  display: grid;
+  gap: 5px;
+}
+
+.public-player-profile__years span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.public-player-profile__years strong {
+  font-family: var(--display);
+  font-size: 1.5rem;
+}
+
+.public-player-profile__stats {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.public-player-profile__stats div {
+  padding: 20px 14px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.public-player-profile__stats strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 2rem;
+}
+
+.public-player-profile__stats span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.public-player-profile__story {
+  margin: 40px 0 30px;
+}
+
+.public-player-profile__story h2 {
+  margin: 8px 0 18px;
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.public-player-profile__story > p:last-child {
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 1050px) {
+  .public-player-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .public-player-profile {
+    grid-template-columns:
+      minmax(250px, 360px)
+      minmax(0, 1fr);
+  }
+
+  .public-player-profile__stats {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .public-player-directory-head,
+  .public-player-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .public-player-profile__photo {
+    position: relative;
+    top: auto;
+    width: min(100%, 420px);
+  }
+}
+
+@media (max-width: 650px) {
+  .public-player-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-player-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .public-player-filter label {
+    grid-column: auto;
+  }
+
+  .public-player-card {
+    grid-template-columns:
+      60px
+      minmax(0, 1fr)
+      auto;
+  }
+
+  .public-player-card__photo {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* Legacy player year markers */
+.public-player-year-filter {
+  margin: 0 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-player-year-filter button {
+  min-height: 38px;
+  padding: 0 15px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.public-player-year-filter button:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.public-player-year-filter button.active {
+  color: #ffffff;
+  border-color: var(--blue);
+  background: var(--blue);
+}
